@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#2b3b6a">
+<title>Bestellingen · Global Fire Company</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body class="admin">
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <img src="assets/logo-ring-light.svg" alt="" class="brand-ring">
+      <div class="brand-text">
+        <span class="brand-name">Global Fire Company</span>
+        <span class="brand-title" data-i18n="adminTitle">Bestellingen</span>
+      </div>
+    </div>
+    <div class="actions">
+      <div class="lang-switch" id="lang-switch" role="group"></div>
+      <a class="btn ghost" href="./" data-i18n="adminToApp">Naar de app</a>
+      <button class="btn ghost" id="btn-logout" data-i18n="adminLogout" hidden>Uitloggen</button>
+    </div>
+  </header>
+
+  <main class="admin-main">
+    <section class="panel" id="login" hidden>
+      <h2 data-i18n="adminLogin">Inloggen</h2>
+      <form id="login-form" class="code-form">
+        <label for="pw" data-i18n="adminPassword">Wachtwoord</label>
+        <div class="row">
+          <input id="pw" type="password" autocomplete="current-password" required>
+          <button class="btn primary" data-i18n="adminLoginGo">Inloggen</button>
+        </div>
+      </form>
+      <p class="form-error" id="login-error" role="alert"></p>
+    </section>
+
+    <div id="board" hidden>
+      <section class="panel">
+        <h2 data-i18n="adminNew">Nieuwe bestelling voor een klant</h2>
+        <p class="hint" data-i18n="adminNewHint">Maak een bestelling aan en stuur de klant de link. De klant vult de sheets en verstuurt de bestelling.</p>
+        <form id="new-form" class="fields cols">
+          <label><span data-i18n="fName">Naam</span><input name="name" maxlength="120"></label>
+          <label><span data-i18n="fCompany">Organisatie</span><input name="company" maxlength="160"></label>
+          <label><span data-i18n="fEmail">E-mail</span><input name="email" type="email" maxlength="160"></label>
+          <label><span data-i18n="fReference">Referentie of PO-nummer</span><input name="reference" maxlength="120"></label>
+          <label><span data-i18n="adminLang">Taal van de link</span><select name="lang" id="new-lang"></select></label>
+          <div class="submit-cell"><button class="btn primary" data-i18n="adminCreate">Aanmaken</button></div>
+        </form>
+        <div class="new-result" id="new-result" hidden></div>
+      </section>
+
+      <section class="panel">
+        <div class="list-head">
+          <h2 data-i18n="adminOrders">Bestellingen</h2>
+          <div class="list-tools">
+            <input type="search" id="q" data-i18n-placeholder="adminSearch" placeholder="Zoeken">
+            <select id="filter">
+              <option value="" data-i18n="adminAll">Alle</option>
+              <option value="draft" data-i18n="status_draft">Concept</option>
+              <option value="submitted" data-i18n="status_submitted">Verstuurd</option>
+              <option value="done" data-i18n="status_done">Afgehandeld</option>
+            </select>
+            <button class="btn ghost small" id="btn-refresh" data-i18n="adminRefresh">Vernieuwen</button>
+            <button class="btn ghost small" id="btn-csv" data-i18n="adminCsv">Exporteren (CSV)</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="orders">
+            <thead><tr>
+              <th data-i18n="orderCode">Ordercode</th><th data-i18n="adminCustomer">Klant</th><th data-i18n="adminStatus">Status</th>
+              <th data-i18n="adminFilled">Elementen</th><th data-i18n="adminUpdated">Gewijzigd</th><th></th>
+            </tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+        <p class="hint" id="empty" hidden data-i18n="adminEmpty">Nog geen bestellingen.</p>
+      </section>
+    </div>
+    <section class="panel" id="disabled" hidden>
+      <h2 data-i18n="adminDisabledTitle">Beheer staat uit</h2>
+      <p class="hint" id="disabled-text"></p>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="js/data.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

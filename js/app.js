@@ -1,5 +1,8 @@
 /* Global Fire Company – sheet samensteller
- * Statische webapp: geen server nodig. Alle data staat in js/data.js.
+ * Alle elementen en sheets staan in js/data.js.
+ * Staat api/orders.php (PHP) naast de app, dan werkt hij met bestellingen: elke klant krijgt een eigen
+ * ordercode en link, en de keuzes worden centraal bewaard. Zonder PHP (bijv. GitHub Pages) werkt hij
+ * zoals voorheen: alles blijft in de browser van de bezoeker.
  */
 (function () {
   'use strict';
@@ -74,6 +77,7 @@
   }
 
   function persist() {
+    if (order) { scheduleSave(); return; }
     try { localStorage.setItem(STORE_KEY, JSON.stringify({ current: state.current, sheets: state.fill })); } catch (e) { }
   }
 
@@ -101,6 +105,7 @@
   }
 
   function addToken(tokenId, slotIndex) {
+    if (locked()) return false;
     var t = TOKEN[tokenId], s = sheet();
     if (s.sizes.indexOf(t.size) < 0) { toast(T('toastNoFit', { name: tokenName(t), sheet: sheetName(s) }), true); return false; }
     var i = slotIndex != null ? slotIndex : firstFree(t.size);
@@ -112,6 +117,7 @@
   }
 
   function fillRest(tokenId) {
+    if (locked()) return;
     var t = TOKEN[tokenId], n = 0, i;
     while ((i = firstFree(t.size)) >= 0) { fill()[i] = tokenId; n++; }
     if (!n) { fullMessage(t.size); return; }
@@ -119,7 +125,7 @@
     toast(T('toastFilled', { n: n, name: tokenName(t), adj: adj(t.size) }));
   }
 
-  function removeAt(i) { fill()[i] = null; commit(); }
+  function removeAt(i) { if (locked()) return; fill()[i] = null; commit(); }
 
   function wrongSize(t) {
     toast(T('toastWrongSize', { name: tokenName(t), size: label(t.size).toLowerCase(), mm: mm(SIZE[t.size]) }), true);
@@ -139,7 +145,7 @@
       b.innerHTML = '<span class="t-name">' + esc(sheetName(s)) + '</span>' +
         '<span class="t-meta">' + s.sizes.map(function (z) { return esc(label(z)); }).join(' + ') + '</span>' +
         '<span class="t-fill' + (used === total ? ' full' : '') + '">' + used + '/' + total + '</span>';
-      b.onclick = function () { state.current = s.id; persist(); render(); };
+      b.onclick = function () { state.current = s.id; if (!order) persist(); render(); };
       tabs.appendChild(b);
     });
   }
@@ -193,7 +199,7 @@
         if (state.back && !t.mirrorBack) img.className = 'flip';
         d.appendChild(img);
         d.title = tokenName(t);
-        if (!state.back) {
+        if (!state.back && !readOnly()) {
           var rm = el('button', 'rm', '×'); rm.type = 'button'; rm.setAttribute('aria-label', T('removeAria', { name: tokenName(t) }));
           rm.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
           rm.onclick = function () { removeAt(i); };
@@ -237,14 +243,14 @@
     });
   }
 
-  function render() { renderTabs(); renderLibrary(); renderSheet(); renderSummary(); }
+  function render() { renderTabs(); renderLibrary(); renderSheet(); renderSummary(); renderOrder(); }
 
   /* ---------- drag & drop (pointer events: muis én touch) ---------- */
   var drag = null;
 
   function startDrag(e, src) {
     if (e.button != null && e.button !== 0) return;
-    if (state.back) return;
+    if (state.back || readOnly()) return;
     e.preventDefault();
     drag = { src: src, x0: e.clientX, y0: e.clientY, started: false, target: null, pointerId: e.pointerId };
     window.addEventListener('pointermove', onMove);
@@ -366,6 +372,7 @@
   }
 
   function open(file) {
+    if (locked()) return;
     var r = new FileReader();
     r.onload = function () {
       try {
@@ -465,11 +472,224 @@
     });
   }
 
+
+  /* ---------- bestellingen (alleen als api/orders.php bereikbaar is) ---------- */
+  var API = 'api/orders.php', RECENT_KEY = 'gfc-sheet-samensteller-orders';
+  var order = null;          // { code, status, customer, submittedAt, … } zodra er een bestelling open is
+  var server = null;         // antwoord van ping, of null zonder server
+  var saveTimer = null, saving = false, dirty = false, saveFailed = false;
+
+  function readOnly() { return !!order && order.status !== 'draft'; }
+  function locked() { if (readOnly()) { toast(T('toastLocked'), true); return true; } return false; }
+
+  function parseApi(r) {
+    return r.text().then(function (txt) {
+      var d; try { d = JSON.parse(txt); } catch (e) { throw { error: 'offline' }; }
+      if (!d || !d.ok) throw d || { error: 'offline' };
+      return d;
+    });
+  }
+  function apiGet(query) { return fetch(API + '?' + query, { cache: 'no-store' }).then(parseApi); }
+  function apiPost(body) {
+    return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(parseApi);
+  }
+  function errText(e) {
+    var map = { not_found: 'errNotFound', bad_code: 'errBadCode', locked: 'toastLocked', rate_limited: 'errRateLimited',
+      create_disabled: 'errCreateDisabled', customer_required: 'errCustomer', empty_order: 'toastNothing' };
+    return T(map[e && e.error] || 'errOffline');
+  }
+
+  function normCode(v) {
+    var c = String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    return c.length === 12 ? c.slice(0, 4) + '-' + c.slice(4, 8) + '-' + c.slice(8) : '';
+  }
+  function orderUrl(code) {
+    return location.origin + location.pathname + '?order=' + encodeURIComponent(code);
+  }
+  function recent() { try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]').filter(function (r) { return r && normCode(r.code); }); } catch (e) { return []; } }
+  function remember(o) {
+    try {
+      var list = recent().filter(function (r) { return r.code !== o.code; });
+      list.unshift({ code: o.code, name: o.customer.company || o.customer.name || '', at: new Date().toISOString() });
+      localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 5)));
+    } catch (e) { }
+  }
+
+  function payloadSheets() { var out = {}; DATA.sheets.forEach(function (s) { out[s.id] = state.fill[s.id]; }); return out; }
+
+  function scheduleSave() {
+    dirty = true; renderOrderState();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveNow, 700);
+  }
+  function saveNow(extra) {
+    if (!order || readOnly()) return Promise.resolve();
+    if (saving) { clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 400); return Promise.resolve(); }
+    clearTimeout(saveTimer);
+    saving = true; dirty = false; renderOrderState();
+    var body = { action: 'save', code: order.code, sheets: payloadSheets(), lang: lang };
+    if (extra) Object.keys(extra).forEach(function (k) { body[k] = extra[k]; });
+    return apiPost(body).then(function (d) {
+      saving = false; saveFailed = false; order.status = d.order.status; order.customer = d.order.customer;
+      renderOrderState();
+    }, function (e) {
+      saving = false; dirty = true; saveFailed = true;
+      if (e && e.error === 'locked') { reloadOrder(); return; }
+      renderOrderState();
+      clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 5000);
+    });
+  }
+
+  function applyOrder(o) {
+    order = o;
+    DATA.sheets.forEach(function (s) { state.fill[s.id] = sanitize(s.id, o.sheets && o.sheets[s.id]); });
+    remember(o);
+    if (history.replaceState && !new RegExp('[?&]order=' + o.code + '(&|$)').test(location.search)) history.replaceState(null, '', orderUrl(o.code));
+    render();
+  }
+  function loadOrder(code) {
+    return apiGet('action=get&code=' + encodeURIComponent(code)).then(function (d) { applyOrder(d.order); });
+  }
+  function reloadOrder() { if (order) loadOrder(order.code).then(function () { toast(T('toastLocked'), true); }, function () { }); }
+
+  function renderOrderState() {
+    var st = $('order-state'); if (!st || !order) return;
+    var key = readOnly() ? (order.status === 'done' ? 'stDone' : 'stSubmitted') : saveFailed ? 'stOffline' : (saving || dirty) ? 'stSaving' : 'stSaved';
+    st.textContent = T(key);
+    st.className = 'oc-state ' + key;
+  }
+
+  function fmtDate(iso) {
+    try { return new Date(iso).toLocaleString(I18N[lang]._htmlLang, { dateStyle: 'long', timeStyle: 'short' }); } catch (e) { return iso; }
+  }
+
+  function renderOrder() {
+    var on = !!order;
+    $('order-chip').hidden = !on;
+    $('btn-submit').hidden = !on || readOnly();
+    $('btn-print').classList.toggle('primary', !on || readOnly());
+    $('btn-print').classList.toggle('ghost', on && !readOnly());
+    $('btn-load').hidden = on;   // bij een bestelling slaat de server alles op
+    $('btn-save').hidden = on;
+    $('btn-clear').hidden = readOnly();
+    document.body.classList.toggle('readonly', readOnly());
+    var banner = $('order-banner');
+    if (on && readOnly()) {
+      banner.hidden = false;
+      banner.innerHTML = '<b>' + esc(T(order.status === 'done' ? 'bannerDoneTitle' : 'bannerTitle')) + '</b> ' +
+        esc(T('bannerText', { date: fmtDate(order.submittedAt || order.updatedAt), code: order.code }));
+    } else banner.hidden = true;
+    if (on) { $('order-code').textContent = order.code; renderOrderState(); }
+  }
+
+  /* startscherm: nieuwe bestelling of bestaande code */
+  function showStart(msg) {
+    var dlg = $('start-dialog');
+    $('start-new').hidden = !server.publicCreate;
+    $('start-error').textContent = msg || '';
+    var list = recent(), ul = $('start-recent-list'); ul.innerHTML = '';
+    $('start-recent').hidden = !list.length;
+    list.forEach(function (r) {
+      var li = el('li'), b = el('button', 'btn ghost small', '<span>' + esc(r.code) + '</span>' + (r.name ? ' <small>' + esc(r.name) + '</small>' : ''));
+      b.type = 'button';
+      b.onclick = function () { openCode(r.code); };
+      li.appendChild(b); ul.appendChild(li);
+    });
+    if (!dlg.open) { if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', ''); }
+  }
+  function openCode(code) {
+    var c = normCode(code);
+    if (!c) { $('start-error').textContent = T('errBadCode'); return; }
+    $('start-error').textContent = '';
+    loadOrder(c).then(function () { $('start-dialog').close(); toast(T('toastOrderOpened', { code: c })); },
+      function (e) { $('start-error').textContent = errText(e); });
+  }
+
+  function openSubmit() {
+    if (locked()) return;
+    var any = DATA.sheets.some(function (s) { return state.fill[s.id].some(Boolean); });
+    if (!any) { toast(T('toastNothing'), true); return; }
+    var f = $('submit-form'), c = order.customer || {};
+    ['name', 'company', 'email', 'phone', 'reference', 'notes'].forEach(function (k) { f.elements[k].value = c[k] || ''; });
+    var ul = $('submit-summary'); ul.innerHTML = '';
+    DATA.sheets.forEach(function (s) {
+      var used = state.fill[s.id].filter(Boolean).length;
+      if (used) ul.appendChild(el('li', '', '<span>' + esc(sheetName(s)) + '</span><b>' + used + ' / ' + s.slots.length + '</b>'));
+    });
+    $('submit-error').textContent = '';
+    $('submit-dialog').showModal();
+  }
+  function formCustomer() {
+    var f = $('submit-form'), c = {};
+    ['name', 'company', 'email', 'phone', 'reference', 'notes'].forEach(function (k) { c[k] = f.elements[k].value.trim(); });
+    return c;
+  }
+
+  function setupOrders() {
+    $('order-code').onclick = function () {
+      var url = orderUrl(order.code);
+      var done = function () { toast(T('toastLinkCopied')); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, function () { prompt(T('copyLink'), url); });
+      else prompt(T('copyLink'), url);
+    };
+    $('btn-submit').onclick = openSubmit;
+    $('submit-cancel').onclick = function () {
+      if (order && !readOnly()) { order.customer = formCustomer(); saveNow({ customer: order.customer }); }
+      $('submit-dialog').close();
+    };
+    $('submit-form').onsubmit = function (e) {
+      e.preventDefault();
+      var f = e.target, c = formCustomer();
+      if (!c.name || !f.elements.email.checkValidity() || !c.email) {
+        $('submit-error').textContent = T('errCustomer');
+        (c.name ? f.elements.email : f.elements.name).focus();
+        return;
+      }
+      var go = $('submit-go'); go.disabled = true;
+      clearTimeout(saveTimer);
+      apiPost({ action: 'submit', code: order.code, sheets: payloadSheets(), customer: c, lang: lang }).then(function (d) {
+        go.disabled = false; dirty = false; saveFailed = false;
+        $('submit-dialog').close();
+        applyOrder(d.order);
+        toast(T('toastSubmitted'));
+      }, function (err) {
+        go.disabled = false;
+        $('submit-error').textContent = errText(err);
+        if (err && err.error === 'locked') { $('submit-dialog').close(); reloadOrder(); }
+      });
+    };
+    $('start-dialog').addEventListener('cancel', function (e) { e.preventDefault(); });
+    $('start-create').onclick = function () {
+      var b = $('start-create'); b.disabled = true;
+      apiPost({ action: 'create', lang: lang }).then(function (d) {
+        b.disabled = false; $('start-dialog').close();
+        applyOrder(d.order);
+        toast(T('toastOrderCreated', { code: d.order.code }));
+      }, function (e) { b.disabled = false; $('start-error').textContent = errText(e); });
+    };
+    $('start-form').onsubmit = function (e) { e.preventDefault(); openCode($('start-code').value); };
+    window.addEventListener('beforeunload', function (e) {
+      if (order && (dirty || saving)) { saveNow(); e.preventDefault(); e.returnValue = ''; }
+    });
+  }
+
+  function startOrders() {
+    var m = /[?&]order=([A-Za-z0-9-]+)/.exec(location.search), code = m ? normCode(decodeURIComponent(m[1])) : '';
+    var timeout = new Promise(function (_, no) { setTimeout(function () { no({ error: 'offline' }); }, 6000); });
+    Promise.race([apiGet('action=ping'), timeout]).then(function (d) {
+      server = d;
+      document.body.classList.add('has-orders');
+      if (code) loadOrder(code).catch(function (e) { showStart(errText(e)); });
+      else showStart();
+    }, function () { /* geen server: lokale modus zoals voorheen */ });
+  }
+
   /* ---------- init ---------- */
   load();
   $('opt-back').onchange = function (e) { state.back = e.target.checked; renderSheet(); };
   var clearArmed = null;
   $('btn-clear').onclick = function () {
+    if (locked()) return;
     var b = $('btn-clear');
     if (!fill().some(Boolean)) { toast(T('toastAlreadyEmpty')); return; }
     if (clearArmed !== state.current) {
@@ -484,6 +704,8 @@
   $('btn-load').onclick = function () { $('file-load').click(); };
   $('file-load').onchange = function (e) { if (e.target.files[0]) open(e.target.files[0]); e.target.value = ''; };
   setupPrint();
+  setupOrders();
   applyLang();
   render();
+  startOrders();
 })();

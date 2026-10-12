@@ -19,13 +19,21 @@
       </div>
     </div>
     <div class="actions">
+      <div class="order-chip" id="order-chip" hidden>
+        <span class="oc-label" data-i18n="orderCode">Ordercode</span>
+        <button type="button" class="oc-code" id="order-code" data-i18n-title="copyLink"></button>
+        <span class="oc-state" id="order-state"></span>
+      </div>
       <div class="lang-switch" id="lang-switch" role="group" aria-label="Taal"></div>
       <button class="btn ghost" id="btn-load" data-i18n="open" data-i18n-title="openTitle">Openen</button>
       <button class="btn ghost" id="btn-save" data-i18n="save" data-i18n-title="saveTitle">Opslaan</button>
       <button class="btn primary" id="btn-print" data-i18n="print">Afdrukken / PDF</button>
+      <button class="btn primary" id="btn-submit" data-i18n="submit" hidden>Bestelling versturen</button>
       <input type="file" id="file-load" accept="application/json,.json" hidden>
     </div>
   </header>
+
+  <div class="order-banner" id="order-banner" role="status" hidden></div>
 
   <nav class="tabs" id="tabs" role="tablist" aria-label="Sheets"></nav>
 
@@ -84,6 +92,47 @@
     <div class="dialog-actions">
       <button class="btn ghost" value="cancel" data-i18n="cancel">Annuleren</button>
       <button class="btn primary" value="ok" id="print-go" data-i18n="printGo">Afdrukken</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="start-dialog" class="start">
+  <h2 data-i18n="startTitle">Uw bestelling</h2>
+  <p class="hint" data-i18n="startIntro">Elke bestelling heeft een eigen ordercode. Uw keuzes worden onder die code bewaard, zodat u later verder kunt.</p>
+  <div id="start-new">
+    <button type="button" class="btn primary wide" id="start-create" data-i18n="startNew">Nieuwe bestelling starten</button>
+  </div>
+  <form id="start-form" class="code-form" novalidate>
+    <label for="start-code" data-i18n="startHaveCode">Heeft u al een ordercode?</label>
+    <div class="row">
+      <input id="start-code" autocomplete="off" spellcheck="false" placeholder="ABCD-EFGH-JKLM" maxlength="14">
+      <button class="btn" data-i18n="startOpen">Openen</button>
+    </div>
+  </form>
+  <div id="start-recent" hidden>
+    <h3 data-i18n="startRecent">Eerder op dit apparaat</h3>
+    <ul class="recent" id="start-recent-list"></ul>
+  </div>
+  <p class="form-error" id="start-error" role="alert"></p>
+</dialog>
+
+<dialog id="submit-dialog">
+  <form id="submit-form" novalidate>
+    <h2 data-i18n="submitTitle">Bestelling versturen</h2>
+    <p class="hint" data-i18n="submitIntro">Vul uw gegevens in. Na het versturen ontvangt Global Fire Company uw bestelling en kunt u niets meer wijzigen.</p>
+    <ul class="order submit-summary" id="submit-summary"></ul>
+    <div class="fields">
+      <label><span><span data-i18n="fName">Naam</span> *</span><input name="name" autocomplete="name" required maxlength="120"></label>
+      <label><span data-i18n="fCompany">Organisatie</span><input name="company" autocomplete="organization" maxlength="160"></label>
+      <label><span><span data-i18n="fEmail">E-mail</span> *</span><input name="email" type="email" autocomplete="email" required maxlength="160"></label>
+      <label><span data-i18n="fPhone">Telefoon</span><input name="phone" type="tel" autocomplete="tel" maxlength="60"></label>
+      <label class="full"><span data-i18n="fReference">Referentie of PO-nummer</span><input name="reference" maxlength="120"></label>
+      <label class="full"><span data-i18n="fNotes">Opmerkingen</span><textarea name="notes" rows="3" maxlength="2000"></textarea></label>
+    </div>
+    <p class="form-error" id="submit-error" role="alert"></p>
+    <div class="dialog-actions">
+      <button type="button" class="btn ghost" id="submit-cancel" data-i18n="cancel">Annuleren</button>
+      <button class="btn primary" id="submit-go" data-i18n="submitGo">Versturen</button>
     </div>
   </form>
 </dialog>
