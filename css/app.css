@@ -74,7 +74,13 @@ h2::before { content: ""; width: 8px; height: 8px; background: var(--ink); flex-
 .brand-name { font-family: var(--font-display); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); }
 .brand-title { font-family: var(--font-display); font-size: 22px; line-height: 1; letter-spacing: .03em; text-transform: uppercase; color: #fff;
   text-shadow: -1.5px 0 rgba(255, 70, 110, .55), 1.5px 0 rgba(60, 200, 255, .55), 0 0 18px rgba(25, 137, 202, .45); }
-.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.lang-switch { display: inline-flex; border: 1px solid var(--hud-dim); border-radius: var(--radius); overflow: hidden; margin-right: 6px; }
+.lang-switch .lang { border: none; background: transparent; color: var(--ink-2); font-family: var(--font-mono); font-size: 13px; letter-spacing: .1em; padding: 9px 10px; cursor: pointer; }
+.lang-switch .lang + .lang { border-left: 1px solid var(--hud-dim); }
+.lang-switch .lang:hover { color: #fff; background: rgba(255, 255, 255, .08); }
+.lang-switch .lang.on { background: #fff; color: var(--ground); }
+.lang-switch .lang:focus-visible { outline: 2px solid var(--accent-hi); outline-offset: -2px; }
 
 .btn { border: 1px solid var(--hud); background: transparent; color: var(--ink); padding: 9px 16px; border-radius: var(--radius); cursor: pointer; font-family: var(--font-mono); font-size: 14px; letter-spacing: .08em; text-transform: uppercase; transition: background .15s, border-color .15s; }
 .btn:hover { background: rgba(255, 255, 255, .08); }

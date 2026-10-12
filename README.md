@@ -45,6 +45,10 @@ De koppen gebruiken het huislettertype Ethnocentric als het op de computer van d
 - Afdrukken / PDF: elke sheet op ware grootte, voor- en achterkant, optioneel met snijlijnen.
 - Opslaan / Openen: de bestelling als `.json`-bestand. De app onthoudt de laatste stand ook in de browser.
 
+## Talen
+De app is beschikbaar in het Nederlands, Engels en Duits. Bij het eerste bezoek kiest hij de taal van de browser (anders Engels); de bezoeker kan wisselen met NL / EN / DE rechtsboven en die keuze wordt onthouden. Een link in een vaste taal: `.../index.html?lang=de` (of `?lang=en`, `?lang=nl`).
+Alle teksten staan in `js/i18n.js`. Daar kun je ook een taal toevoegen door een blok te kopiëren (bijv. `fr`).
+
 ## Element toevoegen of aanpassen
 Makkelijkst: zet het nieuwe element als **symbool** (met een snijlijn-kader in de kleur "Cutline") in het sheets-bestand en draai:
 

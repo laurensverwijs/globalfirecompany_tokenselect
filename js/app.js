@@ -20,7 +20,31 @@
   var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
   var pct = function (v, total) { return (v / total * 100) + '%'; };
   var mm = function (s) { return s.w + ' × ' + s.h + ' mm'; };
-  var adj = function (id) { return SIZE[id].adj || SIZE[id].label.toLowerCase(); };
+  /* ---------- taal ---------- */
+  var I18N = window.GFC_I18N, LANGS = Object.keys(I18N), LANG_KEY = 'gfc-sheet-samensteller-lang';
+  function pickLang() {
+    var m = /[?&#]lang=?([a-z]{2})/.exec(location.search + location.hash);
+    if (m && I18N[m[1]]) return m[1];
+    try { var saved = localStorage.getItem(LANG_KEY); if (I18N[saved]) return saved; } catch (e) { }
+    var nav = (navigator.languages || [navigator.language || '']).map(function (l) { return String(l).slice(0, 2).toLowerCase(); });
+    for (var i = 0; i < nav.length; i++) if (I18N[nav[i]]) return nav[i];
+    return 'en';
+  }
+  var lang = pickLang();
+  function T(key, params) {
+    var str = I18N[lang][key]; if (str == null) str = I18N.nl[key]; if (str == null) return key;
+    return String(str).replace(/\{(\w+)\}/g, function (_, k) { return params && params[k] != null ? params[k] : ''; });
+  }
+  var sizeT = function (id) { return (I18N[lang].sizes && I18N[lang].sizes[id]) || { label: SIZE[id].label, adj: SIZE[id].adj || SIZE[id].label.toLowerCase() }; };
+  var label = function (id) { return sizeT(id).label; };
+  var adj = function (id) { return sizeT(id).adj; };
+  var sheetName = function (s) { return T('sheet', { n: DATA.sheets.indexOf(s) + 1 }); };
+  var tokenName = function (t) {
+    if (t['name_' + lang]) return t['name_' + lang];
+    var L = I18N[lang], m = /^(.*?)(?: type (\d+))?$/.exec(t.name);
+    var base = (L.names && L.names[m[1]]) || m[1];
+    return m[2] ? base + ' ' + (L.typeWord || 'type') + ' ' + m[2] : base;
+  };
 
   /* ---------- state ---------- */
   var state = { current: DATA.sheets[0].id, back: false, fill: {} };
@@ -71,14 +95,14 @@
 
   /* ---------- actions ---------- */
   function fullMessage(sizeId) {
-    toast('Vol is vol: alle ' + adj(sizeId) + ' vakken (' + mm(SIZE[sizeId]) + ') op deze sheet zijn bezet.', true);
+    toast(T('toastFull', { adj: adj(sizeId), mm: mm(SIZE[sizeId]) }), true);
     var c = document.querySelector('.cap[data-size="' + sizeId + '"]');
     if (c) { c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake'); }
   }
 
   function addToken(tokenId, slotIndex) {
     var t = TOKEN[tokenId], s = sheet();
-    if (s.sizes.indexOf(t.size) < 0) { toast(t.name + ' past niet op ' + s.name + '.', true); return false; }
+    if (s.sizes.indexOf(t.size) < 0) { toast(T('toastNoFit', { name: tokenName(t), sheet: sheetName(s) }), true); return false; }
     var i = slotIndex != null ? slotIndex : firstFree(t.size);
     if (i < 0) { fullMessage(t.size); return false; }
     if (s.slots[i].size !== t.size) { wrongSize(t); return false; }
@@ -92,13 +116,13 @@
     while ((i = firstFree(t.size)) >= 0) { fill()[i] = tokenId; n++; }
     if (!n) { fullMessage(t.size); return; }
     commit();
-    toast(n + '× ' + t.name + ' toegevoegd. De ' + adj(t.size) + ' vakken zijn nu vol.');
+    toast(T('toastFilled', { n: n, name: tokenName(t), adj: adj(t.size) }));
   }
 
   function removeAt(i) { fill()[i] = null; commit(); }
 
   function wrongSize(t) {
-    toast(t.name + ' is ' + SIZE[t.size].label.toLowerCase() + ' (' + mm(SIZE[t.size]) + ') en past alleen in vakken van die maat.', true);
+    toast(T('toastWrongSize', { name: tokenName(t), size: label(t.size).toLowerCase(), mm: mm(SIZE[t.size]) }), true);
   }
 
   function commit() { persist(); render(); }
@@ -112,8 +136,8 @@
       var b = el('button', 'tab');
       b.setAttribute('role', 'tab');
       b.setAttribute('aria-selected', s.id === state.current ? 'true' : 'false');
-      b.innerHTML = '<span class="t-name">' + esc(s.name) + '</span>' +
-        '<span class="t-meta">' + s.sizes.map(function (z) { return esc(SIZE[z].label); }).join(' + ') + '</span>' +
+      b.innerHTML = '<span class="t-name">' + esc(sheetName(s)) + '</span>' +
+        '<span class="t-meta">' + s.sizes.map(function (z) { return esc(label(z)); }).join(' + ') + '</span>' +
         '<span class="t-fill' + (used === total ? ' full' : '') + '">' + used + '/' + total + '</span>';
       b.onclick = function () { state.current = s.id; persist(); render(); };
       tabs.appendChild(b);
@@ -123,24 +147,25 @@
   function renderLibrary() {
     var s = sheet(), f = fill(), lib = $('library'); lib.innerHTML = '';
     var cap = capacity(s.id);
-    $('lib-hint').textContent = 'Op ' + s.name + ' passen: ' + s.sizes.map(function (z) { return SIZE[z].label.toLowerCase() + ' (' + mm(SIZE[z]) + ')'; }).join(' en ') + '.';
+    $('lib-hint').textContent = T('libHint', { sheet: sheetName(s), sizes: s.sizes.map(function (z) { return label(z).toLowerCase() + ' (' + mm(SIZE[z]) + ')'; }).join(' ' + T('and') + ' ') });
     s.sizes.forEach(function (z) {
       var g = el('div', 'size-group');
-      g.innerHTML = '<h3>' + esc(SIZE[z].label) + ' <small>' + mm(SIZE[z]) + '</small></h3>';
+      g.innerHTML = '<h3>' + esc(label(z)) + ' <small>' + mm(SIZE[z]) + '</small></h3>';
       var wide = SIZE[z].w > 60;
       var grid = el('div', 'cards' + (wide ? ' wide' : ''));
       var full = cap[z].used >= cap[z].total;
       DATA.tokens.filter(function (t) { return t.size === z; }).forEach(function (t) {
         var count = f.filter(function (x) { return x === t.id; }).length;
         var c = el('div', 'card');
-        c.innerHTML = '<div class="thumb" title="Sleep naar de sheet"><img src="' + esc(t.file) + '" alt="' + esc(t.name) + '" draggable="false"></div>' +
-          '<div class="meta"><span class="name" title="' + esc(t.name) + '">' + esc(t.name) + '</span>' + (count ? '<span class="badge">' + count + '×</span>' : '') + '</div>' +
-          '<div class="btns"><button type="button" class="add" title="Eén toevoegen" aria-label="' + esc(t.name) + ' toevoegen">+</button>' +
-          '<button type="button" class="rest" title="Alle lege ' + esc(adj(z)) + ' vakken hiermee vullen" aria-label="Lege vakken vullen met ' + esc(t.name) + '">⇉</button></div>';
+        var nm = tokenName(t);
+        c.innerHTML = '<div class="thumb" title="' + esc(T('dragHint')) + '"><img src="' + esc(t.file) + '" alt="' + esc(nm) + '" draggable="false"></div>' +
+          '<div class="meta"><span class="name" title="' + esc(nm) + '">' + esc(nm) + '</span>' + (count ? '<span class="badge">' + count + '×</span>' : '') + '</div>' +
+          '<div class="btns"><button type="button" class="add" title="' + esc(T('addOne')) + '" aria-label="' + esc(T('addAria', { name: nm })) + '">+</button>' +
+          '<button type="button" class="rest" title="' + esc(T('fillRest', { adj: adj(z) })) + '" aria-label="' + esc(T('fillRestAria', { name: nm })) + '">⇉</button></div>';
         var add = c.querySelector('.add'), rest = c.querySelector('.rest');
         add.onclick = function () { addToken(t.id); };
         rest.onclick = function () { fillRest(t.id); };
-        if (full) { add.title = rest.title = 'Vol is vol'; }
+        if (full) { add.title = rest.title = T('full'); }
         c.querySelector('.thumb').addEventListener('pointerdown', function (e) { startDrag(e, { from: 'lib', token: t.id }); });
         grid.appendChild(c);
       });
@@ -151,7 +176,7 @@
 
   function renderSheet() {
     var s = sheet(), f = fill(), box = $('sheet');
-    $('sheet-title').textContent = s.name + (state.back ? ' · achterkant' : '');
+    $('sheet-title').textContent = sheetName(s) + (state.back ? ' · ' + T('backSuffix') : '');
     box.className = 'sheet' + (state.back ? ' back' : '');
     box.innerHTML = '';
     var bg = el('img', 'layer'); bg.src = s.bg; bg.alt = ''; box.appendChild(bg);
@@ -164,12 +189,12 @@
       d.title = SIZE[slot.size].label + ' · ' + mm(SIZE[slot.size]);
       if (f[i]) {
         var t = TOKEN[f[i]];
-        var img = el('img'); img.src = t.file; img.alt = t.name; img.draggable = false;
+        var img = el('img'); img.src = t.file; img.alt = tokenName(t); img.draggable = false;
         if (state.back && !t.mirrorBack) img.className = 'flip';
         d.appendChild(img);
-        d.title = t.name;
+        d.title = tokenName(t);
         if (!state.back) {
-          var rm = el('button', 'rm', '×'); rm.type = 'button'; rm.setAttribute('aria-label', t.name + ' verwijderen');
+          var rm = el('button', 'rm', '×'); rm.type = 'button'; rm.setAttribute('aria-label', T('removeAria', { name: tokenName(t) }));
           rm.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
           rm.onclick = function () { removeAt(i); };
           d.appendChild(rm);
@@ -180,7 +205,7 @@
     });
     box.appendChild(slots);
     var marks = el('img', 'layer'); marks.src = s.marks; marks.alt = ''; box.appendChild(marks);
-    if (state.back) box.appendChild(el('div', 'back-label', 'Achterkant (gespiegeld, zoals hij gedrukt wordt)'));
+    if (state.back) box.appendChild(el('div', 'back-label', esc(T('backLabel'))));
   }
 
   function renderSummary() {
@@ -192,22 +217,22 @@
       d.dataset.size = z;
       var pips = '';
       for (var k = 0; k < t; k++) pips += '<i' + (k < u ? ' class="on"' : '') + '></i>';
-      d.innerHTML = '<div class="row"><span>' + esc(SIZE[z].label) + ' <small>' + mm(SIZE[z]) + '</small></span><b>' + u + '/' + t + '</b></div>' +
-        '<div class="pips size-' + esc(z) + '" role="img" aria-label="' + u + ' van ' + t + ' vakken gevuld">' + pips + '</div>';
+      d.innerHTML = '<div class="row"><span>' + esc(label(z)) + ' <small>' + mm(SIZE[z]) + '</small></span><b>' + u + '/' + t + '</b></div>' +
+        '<div class="pips size-' + esc(z) + '" role="img" aria-label="' + esc(T('pipsAria', { u: u, t: t })) + '">' + pips + '</div>';
       c.appendChild(d);
     });
     var counts = $('counts'); counts.innerHTML = '';
     var tally = {};
     f.forEach(function (id) { if (id) tally[id] = (tally[id] || 0) + 1; });
     var ids = Object.keys(tally);
-    if (!ids.length) counts.innerHTML = '<li class="empty">Nog leeg. Sleep elementen naar de sheet.</li>';
+    if (!ids.length) counts.innerHTML = '<li class="empty">' + esc(T('emptySheet')) + '</li>';
     ids.sort(function (a, b) { return tally[b] - tally[a]; }).forEach(function (id) {
-      counts.appendChild(el('li', '', '<span>' + esc(TOKEN[id].name) + '</span><b>' + tally[id] + '×</b>'));
+      counts.appendChild(el('li', '', '<span>' + esc(tokenName(TOKEN[id])) + '</span><b>' + tally[id] + '×</b>'));
     });
     var order = $('order'); order.innerHTML = '';
     DATA.sheets.forEach(function (sh) {
       var used = state.fill[sh.id].filter(Boolean).length;
-      var li = el('li', '', '<span>' + esc(sh.name) + '</span><b>' + used + ' / ' + sh.slots.length + '</b>');
+      var li = el('li', '', '<span>' + esc(sheetName(sh)) + '</span><b>' + used + ' / ' + sh.slots.length + '</b>');
       order.appendChild(li);
     });
   }
@@ -281,12 +306,12 @@
       if (tgt.sheet) { addToken(t.id); return; }
       var slot = s.slots[tgt.slot];
       if (slot.size !== t.size) { wrongSize(t); return; }
-      if (f[tgt.slot]) { var old = TOKEN[f[tgt.slot]].name; f[tgt.slot] = t.id; commit(); toast(old + ' vervangen door ' + t.name + '.'); return; }
+      if (f[tgt.slot]) { var old = tokenName(TOKEN[f[tgt.slot]]); f[tgt.slot] = t.id; commit(); toast(T('toastReplaced', { old: old, name: tokenName(t) })); return; }
       addToken(t.id, tgt.slot);
       return;
     }
     // vanaf de sheet
-    if (!tgt) { removeAt(d.src.index); toast(t.name + ' verwijderd.'); return; }
+    if (!tgt) { removeAt(d.src.index); toast(T('toastRemoved', { name: tokenName(t) })); return; }
     if (tgt.sheet || tgt.slot === d.src.index) { render(); return; }
     if (s.slots[tgt.slot].size !== t.size) { wrongSize(t); render(); return; }
     var other = f[tgt.slot];
@@ -337,7 +362,7 @@
       };
     });
     var d = new Date(), stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    download('gfc-bestelling-' + stamp + '.json', JSON.stringify(out, null, 2), 'application/json');
+    download(T('fileName') + '-' + stamp + '.json', JSON.stringify(out, null, 2), 'application/json');
   }
 
   function open(file) {
@@ -352,8 +377,8 @@
           state.fill[id] = sanitize(id, Array.isArray(v) ? v : v.slots);
         });
         commit();
-        toast('Bestelling geopend.');
-      } catch (e) { toast('Dit bestand kan niet worden geopend.', true); }
+        toast(T('toastOpened'));
+      } catch (e) { toast(T('toastOpenError'), true); }
     };
     r.readAsText(file);
   }
@@ -387,7 +412,7 @@
         });
         if (withCut) { var mk = el('img'); mk.src = s.marks; mk.style.cssText = 'left:0;top:0;width:100%;height:100%'; inner.appendChild(mk); }
         page.appendChild(inner);
-        page.appendChild(el('div', 'label', esc(s.name + ' · ' + (back ? 'achterkant' : 'voorkant') + ' · Global Fire Company')));
+        page.appendChild(el('div', 'label', esc(sheetName(s) + ' · ' + T(back ? 'back' : 'front') + ' · Global Fire Company')));
         root.appendChild(page);
       });
     });
@@ -401,7 +426,6 @@
   function setupPrint() {
     var dlg = $('print-dialog');
     var s0 = DATA.sheets[0];
-    $('print-size').textContent = s0.w + ' × ' + s0.h + ' mm';
     $('btn-print').onclick = function () {
       if (dlg.showModal) dlg.showModal(); else doPrint('current', true, true);
     };
@@ -414,8 +438,31 @@
 
   function doPrint(which, withBack, withCut) {
     var ids = which === 'current' ? [state.current] : DATA.sheets.map(function (s) { return s.id; }).filter(function (id) { return state.fill[id].some(Boolean); });
-    if (!ids.length) { toast('Er staan nog geen elementen op een sheet.', true); return; }
+    if (!ids.length) { toast(T('toastNothing'), true); return; }
     buildPrint(ids, withBack, withCut).then(function () { setTimeout(function () { window.print(); }, 50); });
+  }
+
+  /* ---------- vaste teksten + taalkeuze ---------- */
+  function applyLang() {
+    document.documentElement.lang = I18N[lang]._htmlLang;
+    document.title = T('docTitle');
+    document.querySelectorAll('[data-i18n]').forEach(function (n) { n.textContent = T(n.getAttribute('data-i18n')); });
+    document.querySelectorAll('[data-i18n-title]').forEach(function (n) { n.title = T(n.getAttribute('data-i18n-title')); });
+    var bt = document.querySelector('.brand-title'); if (bt) bt.setAttribute('data-text', T('appTitle'));
+    var ph = $('print-hint'); if (ph) ph.textContent = T('printHint', { size: DATA.sheets[0].w + ' × ' + DATA.sheets[0].h + ' mm' });
+    var sw = $('lang-switch'); sw.innerHTML = '';
+    sw.setAttribute('aria-label', T('language'));
+    LANGS.forEach(function (code) {
+      var b = el('button', 'lang' + (code === lang ? ' on' : ''), esc(I18N[code]._label));
+      b.type = 'button'; b.title = I18N[code]._name; b.lang = I18N[code]._htmlLang;
+      b.setAttribute('aria-pressed', code === lang ? 'true' : 'false');
+      b.onclick = function () {
+        lang = code;
+        try { localStorage.setItem(LANG_KEY, code); } catch (e) { }
+        applyLang(); render();
+      };
+      sw.appendChild(b);
+    });
   }
 
   /* ---------- init ---------- */
@@ -424,18 +471,19 @@
   var clearArmed = null;
   $('btn-clear').onclick = function () {
     var b = $('btn-clear');
-    if (!fill().some(Boolean)) { toast('Deze sheet is al leeg.'); return; }
+    if (!fill().some(Boolean)) { toast(T('toastAlreadyEmpty')); return; }
     if (clearArmed !== state.current) {
-      clearArmed = state.current; b.textContent = 'Klik nogmaals om te legen'; b.classList.add('armed');
-      setTimeout(function () { clearArmed = null; b.textContent = 'Sheet leegmaken'; b.classList.remove('armed'); }, 3000);
+      clearArmed = state.current; b.textContent = T('clearConfirm'); b.classList.add('armed');
+      setTimeout(function () { clearArmed = null; b.textContent = T('clear'); b.classList.remove('armed'); }, 3000);
       return;
     }
-    clearArmed = null; b.textContent = 'Sheet leegmaken'; b.classList.remove('armed');
-    state.fill[state.current] = emptyFill(sheet()); commit(); toast(sheet().name + ' is leeggemaakt.');
+    clearArmed = null; b.textContent = T('clear'); b.classList.remove('armed');
+    state.fill[state.current] = emptyFill(sheet()); commit(); toast(T('toastCleared', { sheet: sheetName(sheet()) }));
   };
   $('btn-save').onclick = save;
   $('btn-load').onclick = function () { $('file-load').click(); };
   $('file-load').onchange = function (e) { if (e.target.files[0]) open(e.target.files[0]); e.target.value = ''; };
   setupPrint();
+  applyLang();
   render();
 })();

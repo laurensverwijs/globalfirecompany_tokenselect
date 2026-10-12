@@ -15,13 +15,14 @@
       <img src="assets/logo-ring-light.svg" alt="" class="brand-ring">
       <div class="brand-text">
         <span class="brand-name">Global Fire Company</span>
-        <span class="brand-title" data-text="Sheet samensteller">Sheet samensteller</span>
+        <span class="brand-title" data-i18n="appTitle">Sheet samensteller</span>
       </div>
     </div>
     <div class="actions">
-      <button class="btn ghost" id="btn-load" title="Een eerder opgeslagen bestelling openen">Openen</button>
-      <button class="btn ghost" id="btn-save" title="Bestelling als bestand opslaan">Opslaan</button>
-      <button class="btn primary" id="btn-print">Afdrukken / PDF</button>
+      <div class="lang-switch" id="lang-switch" role="group" aria-label="Taal"></div>
+      <button class="btn ghost" id="btn-load" data-i18n="open" data-i18n-title="openTitle">Openen</button>
+      <button class="btn ghost" id="btn-save" data-i18n="save" data-i18n-title="saveTitle">Opslaan</button>
+      <button class="btn primary" id="btn-print" data-i18n="print">Afdrukken / PDF</button>
       <input type="file" id="file-load" accept="application/json,.json" hidden>
     </div>
   </header>
@@ -31,7 +32,7 @@
   <main class="workspace">
     <aside class="library" aria-label="Beschikbare elementen">
       <div class="library-head">
-        <h2>Elementen</h2>
+        <h2 data-i18n="elements">Elementen</h2>
         <p class="hint" id="lib-hint"></p>
       </div>
       <div class="library-list" id="library"></div>
@@ -41,11 +42,11 @@
       <div class="stage-head">
         <div>
           <h1 id="sheet-title"></h1>
-          <p class="lead"><span class="sq" aria-hidden="true"></span>Sleep elementen naar een vak met dezelfde maat. Sleep een element van de sheet af om het te verwijderen.</p>
+          <p class="lead"><span class="sq" aria-hidden="true"></span><span data-i18n="lead">Sleep elementen naar een vak met dezelfde maat. Sleep een element van de sheet af om het te verwijderen.</span></p>
         </div>
         <div class="stage-tools">
-          <label class="switch"><input type="checkbox" id="opt-back"> <span>Achterkant bekijken</span></label>
-          <button class="btn ghost small" id="btn-clear">Sheet leegmaken</button>
+          <label class="switch"><input type="checkbox" id="opt-back"> <span data-i18n="viewBack">Achterkant bekijken</span></label>
+          <button class="btn ghost small" id="btn-clear" data-i18n="clear">Sheet leegmaken</button>
         </div>
       </div>
       <div class="sheet-wrap" id="sheet-wrap">
@@ -54,11 +55,11 @@
     </section>
 
     <aside class="summary" aria-label="Overzicht">
-      <h2>Capaciteit</h2>
+      <h2 data-i18n="capacity">Capaciteit</h2>
       <div id="capacity"></div>
-      <h2>Op deze sheet</h2>
+      <h2 data-i18n="onSheet">Op deze sheet</h2>
       <ul class="counts" id="counts"></ul>
-      <h2>Bestelling</h2>
+      <h2 data-i18n="order">Bestelling</h2>
       <ul class="order" id="order"></ul>
     </aside>
   </main>
@@ -68,21 +69,21 @@
 
 <dialog id="print-dialog">
   <form method="dialog">
-    <h2>Afdrukken of opslaan als PDF</h2>
-    <p class="hint">Elke sheet wordt op ware grootte afgedrukt (<span id="print-size"></span>). Kies in het printvenster "Opslaan als PDF" voor een PDF-bestand.</p>
+    <h2 data-i18n="printTitle">Afdrukken of opslaan als PDF</h2>
+    <p class="hint" id="print-hint"></p>
     <fieldset>
-      <legend>Welke sheets</legend>
-      <label><input type="radio" name="which" value="current" checked> Alleen de huidige sheet</label>
-      <label><input type="radio" name="which" value="filled"> Alle sheets met elementen</label>
+      <legend data-i18n="printWhich">Welke sheets</legend>
+      <label><input type="radio" name="which" value="current" checked> <span data-i18n="printCurrent">Alleen de huidige sheet</span></label>
+      <label><input type="radio" name="which" value="filled"> <span data-i18n="printFilled">Alle sheets met elementen</span></label>
     </fieldset>
     <fieldset>
-      <legend>Opties</legend>
-      <label><input type="checkbox" id="print-back" checked> Achterkant meeprinten (gespiegeld)</label>
-      <label><input type="checkbox" id="print-cut" checked> Snijlijnen meeprinten</label>
+      <legend data-i18n="printOptions">Opties</legend>
+      <label><input type="checkbox" id="print-back" checked> <span data-i18n="printBack">Achterkant meeprinten (gespiegeld)</span></label>
+      <label><input type="checkbox" id="print-cut" checked> <span data-i18n="printCut">Snijlijnen meeprinten</span></label>
     </fieldset>
     <div class="dialog-actions">
-      <button class="btn ghost" value="cancel">Annuleren</button>
-      <button class="btn primary" value="ok" id="print-go">Afdrukken</button>
+      <button class="btn ghost" value="cancel" data-i18n="cancel">Annuleren</button>
+      <button class="btn primary" value="ok" id="print-go" data-i18n="printGo">Afdrukken</button>
     </div>
   </form>
 </dialog>
@@ -90,6 +91,7 @@
 <div id="print-root" aria-hidden="true"></div>
 
 <script src="js/data.js"></script>
+<script src="js/i18n.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
