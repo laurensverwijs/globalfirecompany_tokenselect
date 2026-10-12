@@ -114,7 +114,7 @@
       b.setAttribute('aria-selected', s.id === state.current ? 'true' : 'false');
       b.innerHTML = '<span class="t-name">' + esc(s.name) + '</span>' +
         '<span class="t-meta">' + s.sizes.map(function (z) { return esc(SIZE[z].label); }).join(' + ') + '</span>' +
-        '<span class="t-meta t-fill' + (used === total ? ' full' : '') + '">' + used + ' / ' + total + ' gevuld</span>';
+        '<span class="t-fill' + (used === total ? ' full' : '') + '">' + used + '/' + total + '</span>';
       b.onclick = function () { state.current = s.id; persist(); render(); };
       tabs.appendChild(b);
     });
@@ -190,7 +190,10 @@
       var u = cap[z].used, t = cap[z].total;
       var d = el('div', 'cap' + (u >= t ? ' full' : ''));
       d.dataset.size = z;
-      d.innerHTML = '<div class="row"><span>' + esc(SIZE[z].label) + ' <small>(' + mm(SIZE[z]) + ')</small></span><b>' + u + ' / ' + t + '</b></div><div class="bar"><i style="width:' + pct(u, t) + '"></i></div>';
+      var pips = '';
+      for (var k = 0; k < t; k++) pips += '<i' + (k < u ? ' class="on"' : '') + '></i>';
+      d.innerHTML = '<div class="row"><span>' + esc(SIZE[z].label) + ' <small>' + mm(SIZE[z]) + '</small></span><b>' + u + '/' + t + '</b></div>' +
+        '<div class="pips size-' + esc(z) + '" role="img" aria-label="' + u + ' van ' + t + ' vakken gevuld">' + pips + '</div>';
       c.appendChild(d);
     });
     var counts = $('counts'); counts.innerHTML = '';
