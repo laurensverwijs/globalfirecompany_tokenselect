@@ -7,6 +7,16 @@ De app is een map met gewone bestanden (HTML, CSS, JavaScript, SVG en lettertype
 
 Te uploaden: `index.html`, `css/`, `js/`, `assets/`. De map `tools/` en `README.md` zijn alleen voor beheer en hoeven niet online.
 
+### Doel: https://www.global-fire-company.com/sheet-organizer/
+Alle paden in de app zijn relatief, dus hij werkt in elke submap zonder aanpassingen.
+1. Log in bij de hosting van global-fire-company.com (FTP/SFTP of het bestandsbeheer in het hostingpaneel, bijv. cPanel/Plesk/DirectAdmin).
+2. Maak in de webroot (meestal `public_html/`, `httpdocs/` of `www/`) de map `sheet-organizer`.
+3. Upload daarin `index.html` en de mappen `css/`, `js/` en `assets/`.
+4. Open `https://www.global-fire-company.com/sheet-organizer/`. Duitse of Engelse link: voeg `?lang=de` of `?lang=en` toe.
+
+Draait de site op WordPress: een echte map in de webroot gaat voor op WordPress-pagina's, zolang er geen pagina met de slug `sheet-organizer` bestaat. Kun je geen bestanden uploaden (bijv. Wix/Squarespace), zet de app dan op GitHub Pages of Netlify en koppel een subdomein zoals `sheets.global-fire-company.com`, of toon hem met een iframe op een pagina `/sheet-organizer`.
+Bijwerken: overschrijf de bestanden in die map. Voeg je nieuwe elementen toe, ververs dan ook de browsercache (Ctrl+F5).
+
 ### Optie 1: GitHub Pages (gratis, vanuit deze repo)
 1. Merge de pull request naar `main`.
 2. Ga op GitHub naar de repo, dan **Settings → Pages**.
