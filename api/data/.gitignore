@@ -1,0 +1,5 @@
+# Orders van klanten horen niet in git.
+*
+!.gitignore
+!.htaccess
+!index.html
