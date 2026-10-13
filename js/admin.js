@@ -48,6 +48,8 @@
 
   var pw = ''; try { pw = sessionStorage.getItem(PW_KEY) || ''; } catch (e) { }
   var orders = [], open = {};
+  // link uit de e-mail: admin.html?order=CODE toont die order meteen, met de PDF-knop
+  var focus = (function () { var m = /[?&]order=([A-Z0-9-]{14})/i.exec(location.search); return m ? m[1].toUpperCase() : ''; })();
 
   function call(body) {
     body.password = pw;
@@ -80,7 +82,18 @@
   function refresh() {
     return call({ action: 'list' }).then(function (d) {
       try { sessionStorage.setItem(PW_KEY, pw); } catch (e) { }
-      orders = d.orders; show('board'); renderRows();
+      orders = d.orders; show('board');
+      if (focus) {
+        var hit = orders.some(function (o) { return o.code === focus; });
+        if (hit) { $('q').value = focus; $('filter').value = ''; open[focus] = true; }
+        else toast(T('errNotFound'), true);
+      }
+      renderRows();
+      if (focus) {
+        var row = document.querySelector('tr.focus');
+        if (row) row.scrollIntoView({ block: 'center' });
+        focus = '';
+      }
     }, handleError);
   }
 
@@ -99,7 +112,7 @@
     list.forEach(function (o) {
       var c = o.customer || {};
       var tr = document.createElement('tr');
-      tr.className = 'st-' + o.status;
+      tr.className = 'st-' + o.status + (o.code === focus ? ' focus' : '');
       var who = (c.company || c.name) ? esc([c.company, c.name].filter(Boolean).join(' · ')) : '<span class="muted">' + esc(T('adminNoName')) + '</span>';
       var opts = ['draft', 'submitted', 'done'].map(function (s) { return '<option value="' + s + '"' + (s === o.status ? ' selected' : '') + '>' + esc(T('status_' + s)) + '</option>'; }).join('');
       tr.innerHTML = '<td><a class="code" href="' + esc(appUrl(o.code)) + '" target="_blank" rel="noopener">' + esc(o.code) + '</a></td>' +

@@ -8,12 +8,15 @@ return [
   // en stuurt de klant de link.
   'public_create' => false,
 
-  // E-mailadres dat bericht krijgt als een klant een bestelling verstuurt. Leeg = geen e-mail.
+  // Wie krijgt een e-mail zodra een klant akkoord geeft? Eén adres, of meerdere gescheiden door komma's,
+  // bijv. 'daniel@voorbeeld.com, laurens@voorbeeld.nl'. Leeg = geen e-mail.
   'notify_email' => '',
+  // Taal van die e-mail: 'de', 'en' of 'nl'.
+  'mail_lang' => 'de',
   // Afzender van die e-mail (gebruik een adres op het eigen domein, anders komt hij vaak in spam).
   'mail_from' => 'no-reply@global-fire-company.com',
-  // Volledige adres van de app, voor de link in de e-mail.
-  'app_url' => 'https://www.global-fire-company.com/sheet-organizer/',
+  // Adres van de app, voor de links in de e-mail. Leeg = automatisch (het adres waarop de app draait).
+  'app_url' => '',
 
   // Maximaal aantal nieuwe bestellingen per IP-adres per uur (tegen misbruik).
   'create_limit_per_hour' => 20,
