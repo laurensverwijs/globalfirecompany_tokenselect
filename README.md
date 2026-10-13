@@ -23,9 +23,10 @@ Klanten kunnen niet zelf een order starten, tenzij je `public_create` in `api/co
 |---|---|
 | `admin_password` | Wachtwoord voor `admin.html`. Zolang het `wijzig-mij` is, staat het beheer uit. |
 | `public_create` | `false` (standaard): alleen GFC maakt orders aan. `true`: klanten kunnen ook zelf een order starten. |
-| `notify_email` | Adres dat een e-mail krijgt zodra een klant akkoord geeft (leeg = geen e-mail). Gebruikt PHP `mail()`, wat de meeste hosters ondersteunen. |
-| `mail_from` | Afzender van die e-mail; gebruik een adres op het eigen domein. |
-| `app_url` | Adres van de app, voor de links in de e-mail. |
+| `notify_email` | Wie een e-mail krijgt zodra een klant akkoord geeft. Meerdere adressen scheiden met komma's. In de mail staat een link `admin.html?order=<code>`: na inloggen staat die order open met de knop *PDF downloaden*. Gebruikt PHP `mail()`, wat de meeste hosters ondersteunen. Leeg = geen e-mail. |
+| `mail_lang` | Taal van die e-mail: `de` (standaard), `en` of `nl`. |
+| `mail_from` | Afzender van die e-mail; gebruik een adres op het eigen domein, anders belandt hij vaak in spam. |
+| `app_url` | Adres van de app voor de links in de e-mail. Leeg = automatisch het adres waarop de app draait. |
 | `create_limit_per_hour` | Maximaal aantal nieuwe bestellingen per IP-adres per uur. |
 
 ## Hosten
@@ -38,7 +39,7 @@ Alle paden in de app zijn relatief, dus hij werkt in elke submap zonder aanpassi
 1. Log in bij de hosting van global-fire-company.com (FTP/SFTP of het bestandsbeheer in het hostingpaneel, bijv. cPanel/Plesk/DirectAdmin).
 2. Maak in de webroot (meestal `public_html/`, `httpdocs/` of `www/`) de map `sheet-organizer`.
 3. Upload daarin `index.html`, `admin.html` en de mappen `css/`, `js/`, `assets/` en `api/`.
-4. Open `api/config.php` op de server en vul een eigen `admin_password` in (en eventueel `notify_email`).
+4. Open `api/config.php` op de server, vul een eigen `admin_password` in en zet bij `notify_email` de adressen die een mail moeten krijgen bij akkoord.
 5. Zorg dat de webserver mag schrijven in `api/data/` (meestal al zo; anders in het bestandsbeheer rechten 755 of 775 geven).
 6. Test: `https://www.global-fire-company.com/sheet-organizer/api/orders.php?action=ping` moet `{"ok":true,…}` tonen, en `https://www.global-fire-company.com/sheet-organizer/api/data/` moet geweigerd worden (403).
 7. Klanten gebruiken `https://www.global-fire-company.com/sheet-organizer/`, GFC beheert via `https://www.global-fire-company.com/sheet-organizer/admin.html`.

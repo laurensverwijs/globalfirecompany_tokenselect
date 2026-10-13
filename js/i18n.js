@@ -70,7 +70,7 @@ window.GFC_I18N = {
     adminDisabledTitle: 'Beheer niet beschikbaar',
     adminDisabled: 'Stel eerst een wachtwoord in: open api/config.php op de server en vervang \'wijzig-mij\' bij admin_password.',
     adminOffline: 'De server antwoordt niet. Het overzicht werkt alleen op een host met PHP, waar ook api/orders.php staat.',
-    names: { 'Ambulance': 'Ambulance', 'Car': 'Auto', 'Fire Truck': 'Brandweerwagen', 'Food Car': 'Foodtruck', 'Fuel Tanks': 'Brandstoftanks',
+    names: { 'Car': 'Auto', 'Fire Truck': 'Brandweerwagen', 'Food Car': 'Foodtruck', 'Fuel Tanks': 'Brandstoftanks',
       'News Van': 'Nieuwswagen', 'Pop Up Tent': 'Pop-up tent', 'Toilet Car': 'Toiletwagen', 'Bus': 'Bus', 'Truck': 'Vrachtwagen',
       'Truck Service': 'Bergingswagen', 'Rescue Helicopter': 'Traumahelikopter' }, typeWord: 'type',
     sizes: {
@@ -215,7 +215,7 @@ window.GFC_I18N = {
     adminDisabledTitle: 'Verwaltung nicht verfügbar',
     adminDisabled: 'Legen Sie zuerst ein Passwort fest: Öffnen Sie api/config.php auf dem Server und ersetzen Sie \'wijzig-mij\' bei admin_password.',
     adminOffline: 'Der Server antwortet nicht. Die Übersicht funktioniert nur auf einem Host mit PHP, auf dem api/orders.php liegt.',
-    names: { 'Ambulance': 'Rettungswagen', 'Car': 'PKW', 'Fire Truck': 'Feuerwehrfahrzeug', 'Food Car': 'Imbisswagen', 'Fuel Tanks': 'Kraftstofftanks',
+    names: { 'Car': 'PKW', 'Fire Truck': 'Feuerwehrfahrzeug', 'Food Car': 'Imbisswagen', 'Fuel Tanks': 'Kraftstofftanks',
       'News Van': 'Reportagewagen', 'Pop Up Tent': 'Faltpavillon', 'Toilet Car': 'Toilettenwagen', 'Bus': 'Bus', 'Truck': 'LKW',
       'Truck Service': 'Abschleppwagen', 'Rescue Helicopter': 'Rettungshubschrauber' }, typeWord: 'Typ',
     sizes: {

@@ -264,6 +264,8 @@ table.orders tr.st-done { opacity: .7; }
 .muted { color: var(--ink-3); }
 a.muted:hover { color: var(--ink); }
 tr.details td { background: rgba(255, 255, 255, .03); }
+table.orders tr.focus td { background: rgba(25, 137, 202, .16); }
+table.orders tr.focus + tr.details td { background: rgba(25, 137, 202, .08); }
 .details-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px 28px; }
 .details h3 { margin-top: 4px; }
 .details dl { margin: 0; font-size: 13.5px; }

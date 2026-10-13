@@ -144,28 +144,81 @@ function require_admin(array $in): void {
 
 function lang_of($v): string { return (is_string($v) && preg_match('/^[a-z]{2}$/', $v)) ? $v : ''; }
 
+/* Adres van de app: uit config, anders afgeleid van dit verzoek (…/sheet-organizer/). */
+function app_base(): string {
+  global $CFG;
+  $base = rtrim((string)($CFG['app_url'] ?? ''), '/');
+  if ($base !== '') return $base;
+  $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+  $host = preg_replace('/[^A-Za-z0-9.:\-\[\]]/', '', (string)($_SERVER['HTTP_HOST'] ?? ''));
+  if ($host === '') return '';
+  return ($https ? 'https' : 'http') . '://' . $host . rtrim(str_replace('\\', '/', dirname(dirname((string)($_SERVER['SCRIPT_NAME'] ?? '/api/orders.php')))), '/');
+}
+
+const MAIL_TEXT = [
+  'nl' => ['subject' => 'Akkoord op bestelling {code}', 'intro' => 'De klant heeft akkoord gegeven op een bestelling. De bestelling is nu vergrendeld.',
+    'pdf' => 'Order openen en PDF downloaden (inloggen met het beheerwachtwoord):', 'view' => 'Bekijken zoals de klant hem ziet:',
+    'code' => 'Ordercode', 'name' => 'Naam', 'company' => 'Organisatie', 'email' => 'E-mail', 'phone' => 'Telefoon', 'reference' => 'Referentie', 'notes' => 'Opmerkingen', 'sheet' => 'Sheet'],
+  'en' => ['subject' => 'Order {code} approved', 'intro' => 'The customer has approved an order. The order is now locked.',
+    'pdf' => 'Open the order and download the PDF (log in with the admin password):', 'view' => 'View it as the customer sees it:',
+    'code' => 'Order code', 'name' => 'Name', 'company' => 'Organisation', 'email' => 'Email', 'phone' => 'Phone', 'reference' => 'Reference', 'notes' => 'Notes', 'sheet' => 'Sheet'],
+  'de' => ['subject' => 'Bestellung {code} freigegeben', 'intro' => 'Der Kunde hat eine Bestellung freigegeben. Die Bestellung ist jetzt gesperrt.',
+    'pdf' => 'Bestellung öffnen und PDF herunterladen (Anmeldung mit dem Verwaltungspasswort):', 'view' => 'Ansicht wie beim Kunden:',
+    'code' => 'Bestellcode', 'name' => 'Name', 'company' => 'Organisation', 'email' => 'E-Mail', 'phone' => 'Telefon', 'reference' => 'Referenz', 'notes' => 'Anmerkungen', 'sheet' => 'Bogen'],
+];
+
+/* Naam van een element zoals in de app (js/data.js); valt terug op de id ("Bus_Size_B_Type_1" → "Bus Type 1"). */
+function token_label(string $id): string {
+  static $names = null;
+  if ($names === null) {
+    $names = [];
+    $js = @file_get_contents(dirname(__DIR__) . '/js/data.js');
+    if ($js !== false && ($a = strpos($js, '{')) !== false && ($b = strrpos($js, '}')) !== false) {
+      $data = json_decode(substr($js, $a, $b - $a + 1), true);
+      foreach (($data['tokens'] ?? []) as $t) if (isset($t['id'], $t['name'])) $names[$t['id']] = $t;
+    }
+  }
+  global $CFG;
+  $t = $names[$id] ?? null;
+  if ($t) return (string)($t['name_' . ($CFG['mail_lang'] ?? 'de')] ?? $t['name']);
+  return trim(preg_replace('/\s+/', ' ', str_replace('_', ' ', preg_replace('/_Size_[A-Z]/', '', $id))));
+}
+
+function mail_header_safe(string $v): string { return trim(preg_replace('/[\r\n]+/', ' ', $v)); }
+
 function notify(array $o): void {
   global $CFG;
-  $to = trim((string)($CFG['notify_email'] ?? ''));
-  if ($to === '' || !function_exists('mail')) return;
+  $to = array_values(array_filter(array_map('trim', is_array($CFG['notify_email'] ?? '') ? $CFG['notify_email'] : explode(',', (string)($CFG['notify_email'] ?? ''))),
+    function ($a) { return filter_var($a, FILTER_VALIDATE_EMAIL) !== false; }));
+  if (!$to || !function_exists('mail')) return;
+  $L = MAIL_TEXT[$CFG['mail_lang'] ?? 'de'] ?? MAIL_TEXT['de'];
   $c = $o['customer'];
-  $lines = ["De klant heeft akkoord gegeven op een bestelling. De bestelling is nu vergrendeld.", '', 'Ordercode: ' . $o['code'],
-    'Naam: ' . $c['name'], 'Bedrijf: ' . $c['company'], 'E-mail: ' . $c['email'], 'Telefoon: ' . $c['phone'],
-    'Referentie: ' . $c['reference'], '', 'Opmerkingen:', $c['notes'], ''];
+  $base = app_base();
+  $lines = [$L['intro'], ''];
+  if ($base !== '') {
+    $lines[] = $L['pdf'];
+    $lines[] = $base . '/admin.html?order=' . $o['code'];
+    $lines[] = '';
+  }
+  $lines[] = $L['code'] . ': ' . $o['code'];
+  foreach (['name', 'company', 'email', 'phone', 'reference'] as $k) if ($c[$k] !== '') $lines[] = $L[$k] . ': ' . $c[$k];
+  if ($c['notes'] !== '') { $lines[] = ''; $lines[] = $L['notes'] . ':'; $lines[] = $c['notes']; }
+  $lines[] = '';
   foreach ($o['sheets'] as $id => $slots) {
     $tally = array_count_values(array_filter($slots, 'is_string'));
     if (!$tally) continue;
-    $lines[] = strtoupper($id) . ' (' . array_sum($tally) . '/' . count($slots) . ')';
+    $lines[] = $L['sheet'] . ' ' . preg_replace('/\D+/', '', $id) . ' (' . array_sum($tally) . '/' . count($slots) . ')';
     arsort($tally);
-    foreach ($tally as $t => $n) $lines[] = '  ' . $n . 'x ' . $t;
+    foreach ($tally as $t => $n) $lines[] = '  ' . $n . 'x ' . token_label((string)$t);
   }
-  $base = rtrim((string)($CFG['app_url'] ?? ''), '/');
-  if ($base !== '') { $lines[] = ''; $lines[] = 'Bekijken en afdrukken: ' . $base . '/?order=' . $o['code']; $lines[] = 'Overzicht en PDF downloaden: ' . $base . '/admin.html'; }
-  $from = (string)($CFG['mail_from'] ?? '');
-  $headers = "Content-Type: text/plain; charset=utf-8\r\n" . ($from !== '' ? "From: $from\r\n" : '');
-  if (filter_var($c['email'], FILTER_VALIDATE_EMAIL)) $headers .= 'Reply-To: ' . $c['email'] . "\r\n";
-  $subject = '=?UTF-8?B?' . base64_encode('Akkoord bestelling ' . $o['code'] . ($c['company'] !== '' ? ' · ' . $c['company'] : ($c['name'] !== '' ? ' · ' . $c['name'] : ''))) . '?=';
-  @mail($to, $subject, implode("\n", $lines), $headers);
+  if ($base !== '') { $lines[] = ''; $lines[] = $L['view']; $lines[] = $base . '/?order=' . $o['code']; }
+  $from = mail_header_safe((string)($CFG['mail_from'] ?? ''));
+  $headers = "MIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: 8bit\r\n" . ($from !== '' ? "From: Global Fire Company <$from>\r\n" : '');
+  if (filter_var($c['email'], FILTER_VALIDATE_EMAIL)) $headers .= 'Reply-To: ' . mail_header_safe($c['email']) . "\r\n";
+  $who = $c['company'] !== '' ? $c['company'] : $c['name'];
+  $subject = '=?UTF-8?B?' . base64_encode(str_replace('{code}', $o['code'], $L['subject']) . ($who !== '' ? ' · ' . $who : '')) . '?=';
+  $params = ($from !== '' && preg_match('/^[^@\s"]+@[^@\s"]+$/', $from)) ? '-f' . $from : '';
+  foreach ($to as $addr) @mail($addr, $subject, implode("\n", $lines), $headers, $params);
 }
 
 /* ---------- verzoek afhandelen ---------- */
