@@ -32,7 +32,9 @@ def nice(n):
     n = n.replace('FireTrack', 'FireTruck').replace('Firetruck', 'FireTruck')
     n = re.sub(r'[_ ]?Type[_ ]?(\d+)', r' type \1', n).replace('_', ' ')
     n = re.sub(r'([a-z])([A-Z])', r'\1 \2', n)
-    return re.sub(r'\s+', ' ', n).strip()
+    n = re.sub(r'\s+', ' ', n).strip()
+    # vaste namen op verzoek van GFC (gelden in elke taal)
+    return re.sub(r'^Ambulance type (\d+)$', r'Rettungsdienst Type \1', n)
 
 # mirror flag on the back side, taken from the instances in the sheet file
 mirror = {}

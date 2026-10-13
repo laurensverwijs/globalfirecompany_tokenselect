@@ -33,7 +33,7 @@ window.GFC_DATA = {
  "tokens": [
   {
    "id": "Ambulance_Size_A_Type_1",
-   "name": "Ambulance type 1",
+   "name": "Rettungsdienst Type 1",
    "source": "Ambulance_Size A_Type 1",
    "file": "assets/tokens/Ambulance_Size_A_Type_1.svg",
    "mirrorBack": true,
@@ -41,7 +41,7 @@ window.GFC_DATA = {
   },
   {
    "id": "Ambulance_Size_A_Type_2",
-   "name": "Ambulance type 2",
+   "name": "Rettungsdienst Type 2",
    "source": "Ambulance_Size A_Type 2",
    "file": "assets/tokens/Ambulance_Size_A_Type_2.svg",
    "mirrorBack": true,
@@ -49,7 +49,7 @@ window.GFC_DATA = {
   },
   {
    "id": "Ambulance_Size_A_Type_3",
-   "name": "Ambulance type 3",
+   "name": "Rettungsdienst Type 3",
    "source": "Ambulance_Size A_Type 3",
    "file": "assets/tokens/Ambulance_Size_A_Type_3.svg",
    "mirrorBack": true,

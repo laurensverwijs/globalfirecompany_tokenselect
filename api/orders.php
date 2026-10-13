@@ -167,8 +167,20 @@ const MAIL_TEXT = [
     'code' => 'Bestellcode', 'name' => 'Name', 'company' => 'Organisation', 'email' => 'E-Mail', 'phone' => 'Telefon', 'reference' => 'Referenz', 'notes' => 'Anmerkungen', 'sheet' => 'Bogen'],
 ];
 
-/* "Ambulance_Size_A_Type_1" → "Ambulance Type 1" (de app kent de vertaalde namen; de e-mail houdt het simpel) */
+/* Naam van een element zoals in de app (js/data.js); valt terug op de id ("Bus_Size_B_Type_1" → "Bus Type 1"). */
 function token_label(string $id): string {
+  static $names = null;
+  if ($names === null) {
+    $names = [];
+    $js = @file_get_contents(dirname(__DIR__) . '/js/data.js');
+    if ($js !== false && ($a = strpos($js, '{')) !== false && ($b = strrpos($js, '}')) !== false) {
+      $data = json_decode(substr($js, $a, $b - $a + 1), true);
+      foreach (($data['tokens'] ?? []) as $t) if (isset($t['id'], $t['name'])) $names[$t['id']] = $t;
+    }
+  }
+  global $CFG;
+  $t = $names[$id] ?? null;
+  if ($t) return (string)($t['name_' . ($CFG['mail_lang'] ?? 'de')] ?? $t['name']);
   return trim(preg_replace('/\s+/', ' ', str_replace('_', ' ', preg_replace('/_Size_[A-Z]/', '', $id))));
 }
 
