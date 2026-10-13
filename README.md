@@ -1,18 +1,19 @@
 # Sheet samensteller · Global Fire Company
 
-Webapp (HTML, CSS en JavaScript) waarmee klanten per printsheet kiezen welke elementen erop komen. Met een klein PHP-script (`api/orders.php`) krijgt elke klant een eigen bestelling met ordercode en link, en ziet Global Fire Company alle bestellingen in `admin.html`. Er is geen database of build-stap nodig.
+Webapp (HTML, CSS en JavaScript) waarmee klanten per printsheet kiezen welke elementen erop komen. Met een klein PHP-script (`api/orders.php`) maakt Global Fire Company in `admin.html` orders aan met een unieke link per klant, en downloadt na akkoord van de klant een PDF. Er is geen database of build-stap nodig.
 
 ## Bestellingen
-- **Klant zonder link** opent de app en klikt op *Nieuwe bestelling starten*. Hij krijgt een ordercode (bijv. `K7QM-2XDP-9TAH`) en de adresbalk wordt `…/sheet-organizer/?order=K7QM-2XDP-9TAH`.
-- **Klant met link**: GFC maakt in `admin.html` een bestelling aan voor de klant en stuurt de link. Met `&lang=de` of `&lang=en` opent hij in die taal.
-- Elke wijziging wordt binnen een seconde op de server bewaard (rechtsboven staat *Opgeslagen*). De klant kan stoppen en later verder, of de link delen met een collega.
-- Met **Bestelling versturen** vult de klant naam, e-mail en eventueel organisatie, telefoon, referentie en opmerkingen in. Daarna is de bestelling vergrendeld; bekijken en afdrukken kan nog wel.
-- Tien klanten tegelijk is geen probleem: elke bestelling is een eigen bestand (`api/data/orders/<code>.json`) en schrijven gebeurt met een slot, zodat niets elkaar overschrijft.
+1. **GFC maakt een order aan** in `admin.html` (naam, organisatie, e-mail, referentie, taal) en krijgt een unieke link, bijv. `…/sheet-organizer/?order=K7QM-2XDP-9TAH&lang=nl`. Die stuurt GFC naar de klant.
+2. **De klant vult de sheets** via die link. Alles wordt automatisch bewaard en met **Opslaan** kan het ook tussentijds. Later dezelfde link openen = verder waar hij was. Collega's met dezelfde link werken in dezelfde order.
+3. **De klant geeft akkoord** met naam en e-mail (organisatie, telefoon, referentie en opmerkingen optioneel). De order wordt dan vergrendeld; bekijken en afdrukken kan nog.
+4. **GFC downloadt de PDF** in `admin.html` (knop *PDF downloaden* bij elke order met akkoord): een voorblad met de ordergegevens en per gevulde sheet de voorkant en gespiegelde achterkant op ware grootte (341 × 341 mm), vector, met snijlijnen.
+
+Klanten kunnen niet zelf een order starten, tenzij je `public_create` in `api/config.php` op `true` zet. Tien (of honderd) klanten tegelijk is geen probleem: elke order is een eigen bestand (`api/data/orders/<code>.json`) en schrijven gebeurt met een slot.
 
 ### Beheer (`admin.html`)
 - Inloggen met het wachtwoord uit `api/config.php`.
 - Lijst van alle bestellingen met status (*Concept*, *Verstuurd*, *Afgehandeld*), zoeken en filteren.
-- *Details* toont per sheet welke elementen en hoeveel. Via de ordercode open je de bestelling om hem te bekijken of af te drukken.
+- *PDF downloaden* bij orders met akkoord. *Details* toont per sheet welke elementen en hoeveel. Via de ordercode open je de bestelling om hem te bekijken of af te drukken.
 - Status terugzetten naar *Concept* geeft de klant de bestelling weer vrij om te wijzigen.
 - *Exporteren (CSV)* geeft een bestand voor Excel met één regel per element per sheet.
 - *Verwijderen* vraagt om een tweede klik en is definitief.
@@ -21,14 +22,14 @@ Webapp (HTML, CSS en JavaScript) waarmee klanten per printsheet kiezen welke ele
 | Instelling | Betekenis |
 |---|---|
 | `admin_password` | Wachtwoord voor `admin.html`. Zolang het `wijzig-mij` is, staat het beheer uit. |
-| `public_create` | `true`: klanten kunnen zelf een bestelling starten. `false`: alleen via een link die GFC aanmaakt. |
-| `notify_email` | Adres dat een e-mail krijgt bij elke verstuurde bestelling (leeg = geen e-mail). Gebruikt PHP `mail()`, wat de meeste hosters ondersteunen. |
+| `public_create` | `false` (standaard): alleen GFC maakt orders aan. `true`: klanten kunnen ook zelf een order starten. |
+| `notify_email` | Adres dat een e-mail krijgt zodra een klant akkoord geeft (leeg = geen e-mail). Gebruikt PHP `mail()`, wat de meeste hosters ondersteunen. |
 | `mail_from` | Afzender van die e-mail; gebruik een adres op het eigen domein. |
 | `app_url` | Adres van de app, voor de links in de e-mail. |
 | `create_limit_per_hour` | Maximaal aantal nieuwe bestellingen per IP-adres per uur. |
 
 ## Hosten
-Te uploaden: `index.html`, `admin.html`, `css/`, `js/`, `assets/` en `api/`. De map `tools/` en `README.md` zijn alleen voor beheer en hoeven niet online.
+Te uploaden: `index.html`, `admin.html`, `css/`, `js/`, `assets/` en `api/`. `js/vendor/` bevat jsPDF en svg2pdf.js (MIT-licentie) voor de PDF. De map `tools/` en `README.md` zijn alleen voor beheer en hoeven niet online.
 
 Voor bestellingen heeft de host **PHP 7.4 of nieuwer** nodig (vrijwel elke webhost heeft dat). Zonder PHP, zoals op GitHub Pages, werkt de app nog steeds, maar dan zonder ordercodes: dan bewaart elke bezoeker zijn keuze alleen in de eigen browser en als bestand of PDF.
 
@@ -83,7 +84,7 @@ De koppen gebruiken het huislettertype Ethnocentric als het op de computer van d
 - Slepen werkt met muis en touch. Ook: `+` (één toevoegen) en `⇉` (alle lege vakken van die maat vullen).
 - De achterkant wordt automatisch gespiegeld gemaakt, zoals in het Illustrator-bestand.
 - Afdrukken / PDF: elke sheet op ware grootte, voor- en achterkant, optioneel met snijlijnen.
-- Met PHP: bestellingen met ordercode, automatisch opslaan, versturen en een beheeroverzicht (zie boven).
+- Met PHP: orders met unieke link, tussentijds opslaan, akkoord met vergrendeling, beheeroverzicht en PDF-download (zie boven).
 - Zonder PHP: Opslaan / Openen als `.json`-bestand; de app onthoudt de laatste stand in de browser.
 
 ## Talen

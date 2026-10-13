@@ -149,7 +149,7 @@ function notify(array $o): void {
   $to = trim((string)($CFG['notify_email'] ?? ''));
   if ($to === '' || !function_exists('mail')) return;
   $c = $o['customer'];
-  $lines = ["Nieuwe bestelling via de sheet samensteller.", '', 'Ordercode: ' . $o['code'],
+  $lines = ["De klant heeft akkoord gegeven op een bestelling. De bestelling is nu vergrendeld.", '', 'Ordercode: ' . $o['code'],
     'Naam: ' . $c['name'], 'Bedrijf: ' . $c['company'], 'E-mail: ' . $c['email'], 'Telefoon: ' . $c['phone'],
     'Referentie: ' . $c['reference'], '', 'Opmerkingen:', $c['notes'], ''];
   foreach ($o['sheets'] as $id => $slots) {
@@ -160,11 +160,11 @@ function notify(array $o): void {
     foreach ($tally as $t => $n) $lines[] = '  ' . $n . 'x ' . $t;
   }
   $base = rtrim((string)($CFG['app_url'] ?? ''), '/');
-  if ($base !== '') { $lines[] = ''; $lines[] = 'Bekijken en afdrukken: ' . $base . '/?order=' . $o['code']; $lines[] = 'Overzicht: ' . $base . '/admin.html'; }
+  if ($base !== '') { $lines[] = ''; $lines[] = 'Bekijken en afdrukken: ' . $base . '/?order=' . $o['code']; $lines[] = 'Overzicht en PDF downloaden: ' . $base . '/admin.html'; }
   $from = (string)($CFG['mail_from'] ?? '');
   $headers = "Content-Type: text/plain; charset=utf-8\r\n" . ($from !== '' ? "From: $from\r\n" : '');
   if (filter_var($c['email'], FILTER_VALIDATE_EMAIL)) $headers .= 'Reply-To: ' . $c['email'] . "\r\n";
-  $subject = '=?UTF-8?B?' . base64_encode('Bestelling ' . $o['code'] . ($c['company'] !== '' ? ' · ' . $c['company'] : ($c['name'] !== '' ? ' · ' . $c['name'] : ''))) . '?=';
+  $subject = '=?UTF-8?B?' . base64_encode('Akkoord bestelling ' . $o['code'] . ($c['company'] !== '' ? ' · ' . $c['company'] : ($c['name'] !== '' ? ' · ' . $c['name'] : ''))) . '?=';
   @mail($to, $subject, implode("\n", $lines), $headers);
 }
 

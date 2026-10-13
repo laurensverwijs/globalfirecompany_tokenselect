@@ -4,8 +4,9 @@ return [
   // Wachtwoord voor admin.html. Zolang dit 'wijzig-mij' is, is het beheer uitgeschakeld.
   'admin_password' => 'wijzig-mij',
 
-  // Mogen klanten zelf een nieuwe bestelling starten (zonder link van GFC)?
-  'public_create' => true,
+  // Mogen klanten zelf een nieuwe bestelling starten? false = alleen GFC maakt orders aan in admin.html
+  // en stuurt de klant de link.
+  'public_create' => false,
 
   // E-mailadres dat bericht krijgt als een klant een bestelling verstuurt. Leeg = geen e-mail.
   'notify_email' => '',

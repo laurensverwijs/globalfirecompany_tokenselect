@@ -41,7 +41,7 @@
     <div id="board" hidden>
       <section class="panel">
         <h2 data-i18n="adminNew">Nieuwe bestelling voor een klant</h2>
-        <p class="hint" data-i18n="adminNewHint">Maak een bestelling aan en stuur de klant de link. De klant vult de sheets en verstuurt de bestelling.</p>
+        <p class="hint" data-i18n="adminNewHint">Maak een bestelling aan en stuur de klant de link. De klant vult de sheets, kan tussendoor opslaan en geeft tot slot akkoord.</p>
         <form id="new-form" class="fields cols">
           <label><span data-i18n="fName">Naam</span><input name="name" maxlength="120"></label>
           <label><span data-i18n="fCompany">Organisatie</span><input name="company" maxlength="160"></label>
@@ -61,7 +61,7 @@
             <select id="filter">
               <option value="" data-i18n="adminAll">Alle</option>
               <option value="draft" data-i18n="status_draft">Concept</option>
-              <option value="submitted" data-i18n="status_submitted">Verstuurd</option>
+              <option value="submitted" data-i18n="status_submitted">Akkoord</option>
               <option value="done" data-i18n="status_done">Afgehandeld</option>
             </select>
             <button class="btn ghost small" id="btn-refresh" data-i18n="adminRefresh">Vernieuwen</button>
@@ -89,6 +89,7 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="js/data.js"></script>
 <script src="js/i18n.js"></script>
+<script src="js/pdf.js"></script>
 <script src="js/admin.js"></script>
 </body>
 </html>

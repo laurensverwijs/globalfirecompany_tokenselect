@@ -107,7 +107,8 @@
         '<td><select class="status" aria-label="' + esc(T('adminStatus')) + '">' + opts + '</select></td>' +
         '<td class="num">' + o.filled + '</td>' +
         '<td>' + esc(fmtDate(o.updatedAt)) + (o.submittedAt ? '<br><span class="muted">' + esc(T('adminSubmittedAt', { date: fmtDate(o.submittedAt) })) + '</span>' : '') + '</td>' +
-        '<td class="row-actions"><button class="btn ghost small" data-act="details">' + esc(T(open[o.code] ? 'adminHide' : 'adminDetails')) + '</button>' +
+        '<td class="row-actions">' + (o.status !== 'draft' && o.filled ? '<button class="btn primary small" data-act="pdf">' + esc(T('pdfDownload')) + '</button>' : '') +
+        '<button class="btn ghost small" data-act="details">' + esc(T(open[o.code] ? 'adminHide' : 'adminDetails')) + '</button>' +
         '<button class="btn ghost small" data-act="copy">' + esc(T('copyLink')) + '</button>' +
         '<button class="btn ghost small" data-act="delete">' + esc(T('adminDelete')) + '</button></td>';
       tr.querySelector('.status').onchange = function (e) {
@@ -115,6 +116,8 @@
           o.status = d.order.status; o.updatedAt = d.order.updatedAt; renderRows(); toast(T('adminStatusSaved'));
         }, handleError);
       };
+      var pdf = tr.querySelector('[data-act="pdf"]');
+      if (pdf) pdf.onclick = function () { makePdf(o.code, pdf); };
       tr.querySelector('[data-act="details"]').onclick = function () { open[o.code] = !open[o.code]; renderRows(); };
       tr.querySelector('[data-act="copy"]').onclick = function () { copy(appUrl(o.code, o.lang)); };
       var del = tr.querySelector('[data-act="delete"]');
@@ -130,6 +133,20 @@
       };
       tb.appendChild(tr);
       if (open[o.code]) tb.appendChild(detailsRow(o));
+    });
+  }
+
+  function makePdf(code, btn) {
+    btn.disabled = true; btn.textContent = T('pdfBusy');
+    fetch(API + '?action=get&code=' + encodeURIComponent(code), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+      if (!d.ok) throw d;
+      return window.GFC_PDF.download(d.order, { T: T, tokenName: tokenName, sheetName: sheetName, date: fmtDate });
+    }).then(function () {
+      btn.disabled = false; btn.textContent = T('pdfDownload');
+    }, function (e) {
+      btn.disabled = false; btn.textContent = T('pdfDownload');
+      if (window.console) console.error(e);
+      toast(T('pdfError'), true);
     });
   }
 

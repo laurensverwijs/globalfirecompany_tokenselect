@@ -570,7 +570,8 @@
     $('btn-print').classList.toggle('primary', !on || readOnly());
     $('btn-print').classList.toggle('ghost', on && !readOnly());
     $('btn-load').hidden = on;   // bij een bestelling slaat de server alles op
-    $('btn-save').hidden = on;
+    $('btn-save').hidden = on && readOnly();
+    $('btn-save').title = T(on ? 'saveOrderTitle' : 'saveTitle');
     $('btn-clear').hidden = readOnly();
     document.body.classList.toggle('readonly', readOnly());
     var banner = $('order-banner');
@@ -586,6 +587,7 @@
   function showStart(msg) {
     var dlg = $('start-dialog');
     $('start-new').hidden = !server.publicCreate;
+    $('start-intro').textContent = T(server.publicCreate ? 'startIntro' : 'startIntroLink');
     $('start-error').textContent = msg || '';
     var list = recent(), ul = $('start-recent-list'); ul.innerHTML = '';
     $('start-recent').hidden = !list.length;
@@ -700,7 +702,10 @@
     clearArmed = null; b.textContent = T('clear'); b.classList.remove('armed');
     state.fill[state.current] = emptyFill(sheet()); commit(); toast(T('toastCleared', { sheet: sheetName(sheet()) }));
   };
-  $('btn-save').onclick = save;
+  $('btn-save').onclick = function () {
+    if (!order) { save(); return; }
+    saveNow().then(function () { toast(saveFailed ? T('errOffline') : T('toastSavedOrder'), saveFailed); });
+  };
   $('btn-load').onclick = function () { $('file-load').click(); };
   $('file-load').onchange = function (e) { if (e.target.files[0]) open(e.target.files[0]); e.target.value = ''; };
   setupPrint();

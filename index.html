@@ -28,7 +28,7 @@
       <button class="btn ghost" id="btn-load" data-i18n="open" data-i18n-title="openTitle">Openen</button>
       <button class="btn ghost" id="btn-save" data-i18n="save" data-i18n-title="saveTitle">Opslaan</button>
       <button class="btn primary" id="btn-print" data-i18n="print">Afdrukken / PDF</button>
-      <button class="btn primary" id="btn-submit" data-i18n="submit" hidden>Bestelling versturen</button>
+      <button class="btn primary" id="btn-submit" data-i18n="submit" hidden>Akkoord geven</button>
       <input type="file" id="file-load" accept="application/json,.json" hidden>
     </div>
   </header>
@@ -98,7 +98,7 @@
 
 <dialog id="start-dialog" class="start">
   <h2 data-i18n="startTitle">Uw bestelling</h2>
-  <p class="hint" data-i18n="startIntro">Elke bestelling heeft een eigen ordercode. Uw keuzes worden onder die code bewaard, zodat u later verder kunt.</p>
+  <p class="hint" id="start-intro"></p>
   <div id="start-new">
     <button type="button" class="btn primary wide" id="start-create" data-i18n="startNew">Nieuwe bestelling starten</button>
   </div>
@@ -118,7 +118,7 @@
 
 <dialog id="submit-dialog">
   <form id="submit-form" novalidate>
-    <h2 data-i18n="submitTitle">Bestelling versturen</h2>
+    <h2 data-i18n="submitTitle">Bestelling akkoord geven</h2>
     <p class="hint" data-i18n="submitIntro">Vul uw gegevens in. Na het versturen ontvangt Global Fire Company uw bestelling en kunt u niets meer wijzigen.</p>
     <ul class="order submit-summary" id="submit-summary"></ul>
     <div class="fields">
@@ -132,7 +132,7 @@
     <p class="form-error" id="submit-error" role="alert"></p>
     <div class="dialog-actions">
       <button type="button" class="btn ghost" id="submit-cancel" data-i18n="cancel">Annuleren</button>
-      <button class="btn primary" id="submit-go" data-i18n="submitGo">Versturen</button>
+      <button class="btn primary" id="submit-go" data-i18n="submitGo">Akkoord</button>
     </div>
   </form>
 </dialog>
