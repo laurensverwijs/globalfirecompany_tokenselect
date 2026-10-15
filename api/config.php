@@ -25,4 +25,13 @@ return [
 
   // Maximaal aantal nieuwe bestellingen per IP-adres per uur (tegen misbruik).
   'create_limit_per_hour' => 20,
+  // Maximaal aantal foute inlogpogingen in het beheer per IP-adres per uur; daarna een uur geblokkeerd.
+  'login_attempts_per_hour' => 10,
+
+  // Orders die zo veel maanden niet zijn gewijzigd, worden automatisch verwijderd (AVG). 0 = nooit.
+  'retention_months' => 6,
+
+  // Sleutel voor de versleutelde klantgegevens. Leeg = automatisch aangemaakt in api/secret-key.php.
+  // Maak van die sleutel een back-up: zonder sleutel zijn de klantgegevens niet meer te lezen.
+  'data_key' => '',
 ];

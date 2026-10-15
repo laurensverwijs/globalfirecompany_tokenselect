@@ -495,7 +495,7 @@
   }
   function errText(e) {
     var map = { not_found: 'errNotFound', bad_code: 'errBadCode', locked: 'toastLocked', rate_limited: 'errRateLimited',
-      create_disabled: 'errCreateDisabled', customer_required: 'errCustomer', empty_order: 'toastNothing' };
+      create_disabled: 'errCreateDisabled', customer_required: 'errCustomer', privacy_required: 'errPrivacy', empty_order: 'toastNothing' };
     return T(map[e && e.error] || 'errOffline');
   }
 
@@ -618,6 +618,8 @@
       var used = state.fill[s.id].filter(Boolean).length;
       if (used) ul.appendChild(el('li', '', '<span>' + esc(sheetName(s)) + '</span><b>' + used + ' / ' + s.slots.length + '</b>'));
     });
+    f.elements.privacy.checked = false;
+    $('privacy-text').textContent = T('privacyText', { months: (server && server.retentionMonths) || 6 });
     $('submit-error').textContent = '';
     $('submit-dialog').showModal();
   }
@@ -647,9 +649,10 @@
         (c.name ? f.elements.email : f.elements.name).focus();
         return;
       }
+      if (!f.elements.privacy.checked) { $('submit-error').textContent = T('errPrivacy'); f.elements.privacy.focus(); return; }
       var go = $('submit-go'); go.disabled = true;
       clearTimeout(saveTimer);
-      apiPost({ action: 'submit', code: order.code, sheets: payloadSheets(), customer: c, lang: lang }).then(function (d) {
+      apiPost({ action: 'submit', code: order.code, sheets: payloadSheets(), customer: c, lang: lang, privacy: true }).then(function (d) {
         go.disabled = false; dirty = false; saveFailed = false;
         $('submit-dialog').close();
         applyOrder(d.order);
