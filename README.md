@@ -24,7 +24,7 @@ Klanten kunnen niet zelf een order starten, tenzij je `public_create` in `api/co
 | `admin_password` | Wachtwoord voor `admin.html`. Zolang het `wijzig-mij` is, staat het beheer uit. |
 | `public_create` | `false` (standaard): alleen GFC maakt orders aan. `true`: klanten kunnen ook zelf een order starten. |
 | `notify_email` | Wie een e-mail krijgt zodra een klant akkoord geeft. Meerdere adressen scheiden met komma's. In de mail staat een link `admin.html?order=<code>`: na inloggen staat die order open met de knop *PDF downloaden*. Gebruikt PHP `mail()`, wat de meeste hosters ondersteunen. Leeg = geen e-mail. |
-| `mail_lang` | Taal van die e-mail: `de` (standaard), `en` of `nl`. |
+| `mail_lang` | Standaardtaal van die e-mail: `de` (standaard), `en` of `nl`. Per adres een eigen taal kan ook: `'notify_email' => ['a@voorbeeld.com' => 'de', 'b@voorbeeld.nl' => 'nl'],` |
 | `mail_from` | Afzender van die e-mail; gebruik een adres op het eigen domein, anders belandt hij vaak in spam. |
 | `app_url` | Adres van de app voor de links in de e-mail. Leeg = automatisch het adres waarop de app draait. |
 | `create_limit_per_hour` | Maximaal aantal nieuwe bestellingen per IP-adres per uur. |
