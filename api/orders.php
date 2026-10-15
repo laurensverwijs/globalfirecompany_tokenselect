@@ -168,7 +168,7 @@ const MAIL_TEXT = [
 ];
 
 /* Naam van een element zoals in de app (js/data.js); valt terug op de id ("Bus_Size_B_Type_1" → "Bus Type 1"). */
-function token_label(string $id): string {
+function token_label(string $id, string $lang): string {
   static $names = null;
   if ($names === null) {
     $names = [];
@@ -178,22 +178,34 @@ function token_label(string $id): string {
       foreach (($data['tokens'] ?? []) as $t) if (isset($t['id'], $t['name'])) $names[$t['id']] = $t;
     }
   }
-  global $CFG;
   $t = $names[$id] ?? null;
-  if ($t) return (string)($t['name_' . ($CFG['mail_lang'] ?? 'de')] ?? $t['name']);
+  if ($t) return (string)($t['name_' . $lang] ?? $t['name']);
   return trim(preg_replace('/\s+/', ' ', str_replace('_', ' ', preg_replace('/_Size_[A-Z]/', '', $id))));
 }
 
 function mail_header_safe(string $v): string { return trim(preg_replace('/[\r\n]+/', ' ', $v)); }
 
-function notify(array $o): void {
+/* notify_email: 'a@x.nl' of 'a@x.nl, b@y.de' (taal = mail_lang), of ['a@x.nl' => 'nl', 'b@y.de' => 'de'] (taal per adres). */
+function recipients(): array {
   global $CFG;
-  $to = array_values(array_filter(array_map('trim', is_array($CFG['notify_email'] ?? '') ? $CFG['notify_email'] : explode(',', (string)($CFG['notify_email'] ?? ''))),
-    function ($a) { return filter_var($a, FILTER_VALIDATE_EMAIL) !== false; }));
-  if (!$to || !function_exists('mail')) return;
-  $L = MAIL_TEXT[$CFG['mail_lang'] ?? 'de'] ?? MAIL_TEXT['de'];
+  $default = (string)($CFG['mail_lang'] ?? 'de');
+  $cfg = $CFG['notify_email'] ?? '';
+  $out = [];
+  if (is_array($cfg)) {
+    foreach ($cfg as $k => $v) {
+      if (is_int($k)) $out[] = [trim((string)$v), $default];
+      else $out[] = [trim((string)$k), trim((string)$v)];
+    }
+  } else {
+    foreach (explode(',', (string)$cfg) as $a) $out[] = [trim($a), $default];
+  }
+  $out = array_filter($out, function ($r) { return filter_var($r[0], FILTER_VALIDATE_EMAIL) !== false; });
+  return array_map(function ($r) use ($default) { return [$r[0], isset(MAIL_TEXT[$r[1]]) ? $r[1] : (isset(MAIL_TEXT[$default]) ? $default : 'de')]; }, array_values($out));
+}
+
+function mail_body(array $o, string $lang, string $base): array {
+  $L = MAIL_TEXT[$lang];
   $c = $o['customer'];
-  $base = app_base();
   $lines = [$L['intro'], ''];
   if ($base !== '') {
     $lines[] = $L['pdf'];
@@ -209,16 +221,28 @@ function notify(array $o): void {
     if (!$tally) continue;
     $lines[] = $L['sheet'] . ' ' . preg_replace('/\D+/', '', $id) . ' (' . array_sum($tally) . '/' . count($slots) . ')';
     arsort($tally);
-    foreach ($tally as $t => $n) $lines[] = '  ' . $n . 'x ' . token_label((string)$t);
+    foreach ($tally as $t => $n) $lines[] = '  ' . $n . 'x ' . token_label((string)$t, $lang);
   }
   if ($base !== '') { $lines[] = ''; $lines[] = $L['view']; $lines[] = $base . '/?order=' . $o['code']; }
+  $who = $c['company'] !== '' ? $c['company'] : $c['name'];
+  $subject = '=?UTF-8?B?' . base64_encode(str_replace('{code}', $o['code'], $L['subject']) . ($who !== '' ? ' · ' . $who : '')) . '?=';
+  return [$subject, implode("\n", $lines)];
+}
+
+function notify(array $o): void {
+  global $CFG;
+  $to = recipients();
+  if (!$to || !function_exists('mail')) return;
+  $c = $o['customer'];
+  $base = app_base();
   $from = mail_header_safe((string)($CFG['mail_from'] ?? ''));
   $headers = "MIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: 8bit\r\n" . ($from !== '' ? "From: Global Fire Company <$from>\r\n" : '');
   if (filter_var($c['email'], FILTER_VALIDATE_EMAIL)) $headers .= 'Reply-To: ' . mail_header_safe($c['email']) . "\r\n";
-  $who = $c['company'] !== '' ? $c['company'] : $c['name'];
-  $subject = '=?UTF-8?B?' . base64_encode(str_replace('{code}', $o['code'], $L['subject']) . ($who !== '' ? ' · ' . $who : '')) . '?=';
   $params = ($from !== '' && preg_match('/^[^@\s"]+@[^@\s"]+$/', $from)) ? '-f' . $from : '';
-  foreach ($to as $addr) @mail($addr, $subject, implode("\n", $lines), $headers, $params);
+  foreach ($to as [$addr, $lang]) {
+    [$subject, $body] = mail_body($o, $lang, $base);
+    @mail($addr, $subject, $body, $headers, $params);
+  }
 }
 
 /* ---------- verzoek afhandelen ---------- */

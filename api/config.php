@@ -8,10 +8,15 @@ return [
   // en stuurt de klant de link.
   'public_create' => false,
 
-  // Wie krijgt een e-mail zodra een klant akkoord geeft? Eén adres, of meerdere gescheiden door komma's,
-  // bijv. 'daniel@voorbeeld.com, laurens@voorbeeld.nl'. Leeg = geen e-mail.
+  // Wie krijgt een e-mail zodra een klant akkoord geeft? Leeg = geen e-mail.
+  // Eén taal voor iedereen (zie mail_lang):   'notify_email' => 'a@voorbeeld.com, b@voorbeeld.nl',
+  // Of per adres een eigen taal ('de', 'en' of 'nl'):
+  //   'notify_email' => [
+  //     'a@voorbeeld.com' => 'de',
+  //     'b@voorbeeld.nl' => 'nl',
+  //   ],
   'notify_email' => '',
-  // Taal van die e-mail: 'de', 'en' of 'nl'.
+  // Standaardtaal van die e-mail: 'de', 'en' of 'nl'.
   'mail_lang' => 'de',
   // Afzender van die e-mail (gebruik een adres op het eigen domein, anders komt hij vaak in spam).
   'mail_from' => 'no-reply@global-fire-company.com',
