@@ -28,6 +28,17 @@ Klanten kunnen niet zelf een order starten, tenzij je `public_create` in `api/co
 | `mail_from` | Afzender van die e-mail; gebruik een adres op het eigen domein, anders belandt hij vaak in spam. |
 | `app_url` | Adres van de app voor de links in de e-mail. Leeg = automatisch het adres waarop de app draait. |
 | `create_limit_per_hour` | Maximaal aantal nieuwe bestellingen per IP-adres per uur. |
+| `login_attempts_per_hour` | Maximaal aantal foute inlogpogingen in het beheer per IP-adres per uur; daarna is inloggen vanaf dat adres een uur geblokkeerd. |
+| `retention_months` | Orders die zo veel maanden niet zijn gewijzigd, worden automatisch verwijderd (standaard 6, 0 = nooit). |
+| `data_key` | Sleutel voor de versleutelde klantgegevens. Leeg = de app maakt bij de eerste order zelf `api/secret-key.php` aan. |
+
+### Beveiliging en privacy
+
+- Klantgegevens (naam, organisatie, e-mail, telefoon, referentie, opmerkingen) staan versleuteld in `api/data/orders/` (libsodium, of AES-256-GCM als die ontbreekt). De sleutel staat in `api/secret-key.php`. **Maak daar een back-up van en overschrijf hem nooit**: zonder sleutel zijn de klantgegevens niet meer te lezen. Oude, onversleutelde orders worden vanzelf versleuteld.
+- Eén keer per dag verwijdert de app orders die `retention_months` niet zijn gewijzigd, en oude regels uit `mail.log`.
+- De klant moet bij akkoord een privacytekst aanvinken; het tijdstip staat in de order (`privacyAcceptedAt`).
+- `.htaccess` in de hoofdmap zet HTTPS en beveiligingsheaders aan (HSTS, CSP, geen inbedden, geen referrer) en blokkeert bestanden die niet op de site horen.
+- De akkoord-mail zelf bevat de klantgegevens wel leesbaar; dat kan bij e-mail niet anders.
 
 ## Hosten
 Te uploaden: `index.html`, `admin.html`, `css/`, `js/`, `assets/` en `api/`. `js/vendor/` bevat jsPDF en svg2pdf.js (MIT-licentie) voor de PDF. De map `tools/` en `README.md` zijn alleen voor beheer en hoeven niet online.

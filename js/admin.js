@@ -74,6 +74,7 @@
 
   function handleError(e) {
     if (e && e.error === 'bad_password') { pw = ''; try { sessionStorage.removeItem(PW_KEY); } catch (x) { } show('login'); $('login-error').textContent = T('adminBadPassword'); return; }
+    if (e && e.error === 'rate_limited') { pw = ''; try { sessionStorage.removeItem(PW_KEY); } catch (x) { } show('login'); $('login-error').textContent = T('adminLocked'); return; }
     if (e && e.error === 'admin_disabled') { show('disabled'); return; }
     if (e && e.error === 'offline') { show('offline'); return; }
     toast(T('errOffline'), true);

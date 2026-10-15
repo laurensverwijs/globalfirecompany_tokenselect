@@ -1,6 +1,8 @@
 <?php
 /* Global Fire Company – orderopslag voor de sheet samensteller.
  * Eén bestand, geen database: elke bestelling is een JSON-bestand in api/data/orders/.
+ * Klantgegevens staan daarin versleuteld (sleutel in api/secret-key.php, of 'data_key' in config.php).
+ * Orders worden na 'retention_months' zonder wijziging automatisch verwijderd.
  * Vereist PHP 7.4 of nieuwer. Instellingen staan in api/config.php.
  *
  * Klant:  GET  ?action=ping | ?action=get&code=…
@@ -70,17 +72,86 @@ function new_code(): string {
 
 function path_for(string $code): string { global $DIR; return $DIR . '/' . $code . '.json'; }
 
-function read_order(string $code): ?array {
-  $p = path_for($code);
+/* ---------- versleuteling van klantgegevens ---------- */
+
+/* 32-byte sleutel: uit config ('data_key', base64), anders uit api/secret-key.php, die bij het eerste gebruik wordt aangemaakt.
+ * Zonder deze sleutel zijn de klantgegevens niet meer te lezen: maak er een back-up van. */
+function data_key(): string {
+  global $CFG;
+  static $key = null;
+  if ($key !== null) return $key;
+  $cfg = (string)($CFG['data_key'] ?? '');
+  if ($cfg !== '') {
+    $k = base64_decode($cfg, true);
+    if ($k === false || strlen($k) !== 32) fail('bad_data_key', 500);
+    return $key = $k;
+  }
+  $file = __DIR__ . '/secret-key.php';
+  if (is_file($file)) {
+    $k = base64_decode((string)(require $file), true);
+    if ($k === false || strlen($k) !== 32) fail('bad_data_key', 500);
+    return $key = $k;
+  }
+  $k = random_bytes(32);
+  $php = "<?php\n// Sleutel voor de klantgegevens in data/orders. NIET verwijderen of overschrijven: zonder deze sleutel zijn ze niet meer te lezen.\nreturn '" . base64_encode($k) . "';\n";
+  $fh = @fopen($file, 'x');  // 'x': nooit een bestaande sleutel overschrijven
+  if (!$fh) {
+    if (is_file($file)) { $key = null; return data_key(); }
+    fail('storage', 500);
+  }
+  fwrite($fh, $php); fclose($fh); @chmod($file, 0600);
+  return $key = $k;
+}
+
+function encrypt_data(array $v): string {
+  $plain = json_encode($v, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+  if (function_exists('sodium_crypto_secretbox')) {
+    $nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+    return 's1:' . base64_encode($nonce . sodium_crypto_secretbox($plain, $nonce, data_key()));
+  }
+  $iv = random_bytes(12); $tag = '';
+  $ct = openssl_encrypt($plain, 'aes-256-gcm', data_key(), OPENSSL_RAW_DATA, $iv, $tag);
+  if ($ct === false) fail('crypto', 500);
+  return 'o1:' . base64_encode($iv . $tag . $ct);
+}
+
+function decrypt_data(string $s): ?array {
+  $raw = base64_decode(substr($s, 3), true);
+  if ($raw === false) return null;
+  $plain = false;
+  if (strncmp($s, 's1:', 3) === 0 && function_exists('sodium_crypto_secretbox_open')) {
+    $n = SODIUM_CRYPTO_SECRETBOX_NONCEBYTES;
+    if (strlen($raw) > $n) $plain = sodium_crypto_secretbox_open(substr($raw, $n), substr($raw, 0, $n), data_key());
+  } elseif (strncmp($s, 'o1:', 3) === 0 && strlen($raw) > 28) {
+    $plain = openssl_decrypt(substr($raw, 28), 'aes-256-gcm', data_key(), OPENSSL_RAW_DATA, substr($raw, 0, 12), substr($raw, 12, 16));
+  }
+  $v = is_string($plain) ? json_decode($plain, true) : null;
+  return is_array($v) ? $v : null;
+}
+
+function read_order(string $code): ?array { return read_order_file(path_for($code)); }
+
+/* Leest een orderbestand; versleutelde klantgegevens ('customerEnc') komen terug als 'customer'. Oude onversleutelde orders blijven leesbaar. */
+function read_order_file(string $p): ?array {
   if (!is_file($p)) return null;
   $d = json_decode((string)file_get_contents($p), true);
-  return is_array($d) ? $d : null;
+  if (!is_array($d)) return null;
+  if (isset($d['customerEnc'])) {
+    $c = is_string($d['customerEnc']) ? decrypt_data($d['customerEnc']) : null;
+    $d['customer'] = clean_customer($c ?? []);
+    unset($d['customerEnc']);
+  } else {
+    $d['customer'] = clean_customer($d['customer'] ?? []);
+  }
+  return $d;
 }
 
 function write_order(array $o): void {
   global $DIR;
   if (!is_dir($DIR) && !@mkdir($DIR, 0750, true)) fail('storage', 500);
   $tmp = $DIR . '/.' . $o['code'] . '.' . bin2hex(random_bytes(4)) . '.tmp';
+  $o['customerEnc'] = encrypt_data($o['customer'] ?? []);
+  unset($o['customer']);
   if (file_put_contents($tmp, json_encode($o, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT), LOCK_EX) === false) fail('storage', 500);
   if (!@rename($tmp, path_for($o['code']))) { @unlink($tmp); fail('storage', 500); }
 }
@@ -117,11 +188,11 @@ function create_order(array $customer, string $lang, string $by): array {
   return $o;
 }
 
-function rate_limited(int $limit): bool {
+function rate_limited(int $limit, string $name = 'ratelimit', bool $record = true): bool {
   global $DIR;
   if ($limit <= 0) return false;
   if (!is_dir($DIR) && !@mkdir($DIR, 0750, true)) return false;
-  $file = $DIR . '/.ratelimit.json';
+  $file = $DIR . '/.' . $name . '.json';
   $fh = fopen($file, 'c+');
   if (!$fh || !flock($fh, LOCK_EX)) return false;
   $data = json_decode((string)stream_get_contents($fh), true) ?: [];
@@ -129,7 +200,7 @@ function rate_limited(int $limit): bool {
   $now = time();
   foreach ($data as $k => $hits) { $data[$k] = array_values(array_filter($hits, function ($t) use ($now) { return $t > $now - 3600; })); if (!$data[$k]) unset($data[$k]); }
   $limited = count($data[$ip] ?? []) >= $limit;
-  if (!$limited) $data[$ip][] = $now;
+  if (!$limited && $record) $data[$ip][] = $now;
   ftruncate($fh, 0); rewind($fh); fwrite($fh, json_encode($data));
   flock($fh, LOCK_UN); fclose($fh);
   return $limited;
@@ -139,7 +210,14 @@ function require_admin(array $in): void {
   global $CFG;
   $pw = (string)($CFG['admin_password'] ?? '');
   if ($pw === '' || $pw === 'wijzig-mij') fail('admin_disabled', 403);
-  if (!is_string($in['password'] ?? null) || !hash_equals($pw, $in['password'])) { usleep(400000); fail('bad_password', 401); }
+  // na te veel foute pogingen vanaf één IP-adres: een uur geblokkeerd
+  $max = (int)($CFG['login_attempts_per_hour'] ?? 10);
+  if (rate_limited($max, 'loginfail', false)) fail('rate_limited', 429);
+  if (!is_string($in['password'] ?? null) || !hash_equals($pw, $in['password'])) {
+    rate_limited($max, 'loginfail');
+    usleep(400000);
+    fail('bad_password', 401);
+  }
 }
 
 function lang_of($v): string { return (is_string($v) && preg_match('/^[a-z]{2}$/', $v)) ? $v : ''; }
@@ -255,6 +333,37 @@ function notify(array $o, string $prefix = ''): array {
   return $result;
 }
 
+/* Eén keer per dag: orders die langer dan retention_months niet zijn gewijzigd verwijderen, oude regels uit mail.log halen
+ * en orders van vóór de versleuteling alsnog versleutelen. */
+function housekeeping(): void {
+  global $CFG, $DIR;
+  if (!is_dir($DIR)) return;
+  $mark = $DIR . '/.housekeeping';
+  if (is_file($mark) && filemtime($mark) > time() - 86400) return;
+  $fh = @fopen($mark, 'c');
+  if (!$fh || !flock($fh, LOCK_EX | LOCK_NB)) return;
+  touch($mark);
+  $months = (int)($CFG['retention_months'] ?? 6);
+  $cutoff = $months > 0 ? gmdate('c', strtotime('-' . $months . ' months')) : '';
+  $lock = fopen($DIR . '/.lock', 'c');
+  if ($lock && flock($lock, LOCK_EX)) {
+    foreach (glob($DIR . '/*.json') ?: [] as $f) {
+      $o = read_order_file($f);
+      if (!$o || !valid_code($o['code'] ?? null) || basename($f) !== $o['code'] . '.json') continue;
+      if ($cutoff !== '' && (string)($o['updatedAt'] ?? '') < $cutoff) { @unlink($f); continue; }
+      $raw = json_decode((string)file_get_contents($f), true);
+      if (is_array($raw) && !isset($raw['customerEnc'])) write_order($o);
+    }
+    flock($lock, LOCK_UN); fclose($lock);
+  }
+  $log = dirname($DIR) . '/mail.log';
+  if ($cutoff !== '' && is_file($log)) {
+    $keep = array_filter(file($log) ?: [], function ($l) use ($cutoff) { return substr($l, 0, 25) >= substr($cutoff, 0, 25); });
+    @file_put_contents($log, implode('', $keep), LOCK_EX);
+  }
+  flock($fh, LOCK_UN); fclose($fh);
+}
+
 /* ---------- verzoek afhandelen ---------- */
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if ($method === 'GET') {
@@ -267,11 +376,13 @@ if ($method === 'GET') {
   fail('method', 405);
 }
 $action = (string)($in['action'] ?? '');
+housekeeping();
 
 switch ($action) {
   case 'ping':
     out(['ok' => true, 'publicCreate' => !empty($CFG['public_create']),
-      'admin' => !in_array((string)($CFG['admin_password'] ?? ''), ['', 'wijzig-mij'], true)]);
+      'admin' => !in_array((string)($CFG['admin_password'] ?? ''), ['', 'wijzig-mij'], true),
+      'retentionMonths' => (int)($CFG['retention_months'] ?? 6)]);
 
   case 'get':
     if (!valid_code($in['code'] ?? null)) fail('bad_code');
@@ -298,6 +409,8 @@ switch ($action) {
       $o['updatedAt'] = gmdate('c');
       if ($action === 'submit') {
         if ($o['customer']['name'] === '' || !filter_var($o['customer']['email'], FILTER_VALIDATE_EMAIL)) fail('customer_required', 422);
+        if (($in['privacy'] ?? null) !== true) fail('privacy_required', 422);
+        $o['privacyAcceptedAt'] = $o['updatedAt'];
         $filled = 0;
         foreach ((array)$o['sheets'] as $slots) $filled += count(array_filter($slots, 'is_string'));
         if (!$filled) fail('empty_order', 422);
@@ -313,8 +426,8 @@ switch ($action) {
     require_admin($in);
     $list = [];
     foreach (glob($DIR . '/*.json') ?: [] as $f) {
-      $o = json_decode((string)file_get_contents($f), true);
-      if (!is_array($o) || !valid_code($o['code'] ?? null)) continue;
+      $o = read_order_file($f);
+      if (!$o || !valid_code($o['code'] ?? null)) continue;
       $filled = 0; $total = 0; $perSheet = [];
       foreach ((array)$o['sheets'] as $id => $slots) {
         $n = count(array_filter($slots, 'is_string'));

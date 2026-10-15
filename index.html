@@ -129,6 +129,11 @@
       <label class="full"><span data-i18n="fReference">Referentie of PO-nummer</span><input name="reference" maxlength="120"></label>
       <label class="full"><span data-i18n="fNotes">Opmerkingen</span><textarea name="notes" rows="3" maxlength="2000"></textarea></label>
     </div>
+    <details class="privacy">
+      <summary data-i18n="privacyTitle">Privacy</summary>
+      <p id="privacy-text"></p>
+    </details>
+    <label class="check privacy-check"><input type="checkbox" name="privacy" required> <span data-i18n="privacyAccept">Ik ga akkoord met het gebruik van mijn gegevens zoals beschreven onder Privacy.</span></label>
     <p class="form-error" id="submit-error" role="alert"></p>
     <div class="dialog-actions">
       <button type="button" class="btn ghost" id="submit-cancel" data-i18n="cancel">Annuleren</button>
