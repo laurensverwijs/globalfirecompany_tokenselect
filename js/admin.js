@@ -219,6 +219,23 @@
   $('btn-logout').onclick = function () { pw = ''; try { sessionStorage.removeItem(PW_KEY); } catch (e) { } orders = []; show('login'); };
   $('btn-refresh').onclick = refresh;
   $('btn-csv').onclick = csv;
+  $('btn-testmail').onclick = function () {
+    var b = $('btn-testmail'), box = $('mail-result'); b.disabled = true;
+    call({ action: 'test_mail' }).then(function (d) {
+      b.disabled = false; box.hidden = false;
+      var html = '';
+      if (!d.mailFunction) html += '<p>' + esc(T('mailNoFunction')) + '</p>';
+      else if (!d.recipients) html += '<p>' + esc(T('mailNoRecipients')) + '</p>';
+      else {
+        html += '<ul class="counts">' + d.results.map(function (r) {
+          return '<li><span>' + esc(r.to) + ' (' + esc(r.lang.toUpperCase()) + ')</span><b>' + esc(T(r.sent ? 'mailSent' : 'mailFailed')) + '</b></li>';
+        }).join('') + '</ul>';
+        html += '<p class="hint">' + esc(T(d.results.every(function (r) { return r.sent; }) ? 'mailSentHint' : 'mailFailedHint')) + '</p>';
+      }
+      if (d.from && !d.fromMatchesHost) html += '<p class="hint">' + esc(T('mailFromWarn', { from: d.from })) + '</p>';
+      box.innerHTML = html;
+    }, function (e) { b.disabled = false; handleError(e); });
+  };
   $('q').oninput = renderRows;
   $('filter').onchange = renderRows;
   $('new-form').onsubmit = function (e) {

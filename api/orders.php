@@ -203,7 +203,7 @@ function recipients(): array {
   return array_map(function ($r) use ($default) { return [$r[0], isset(MAIL_TEXT[$r[1]]) ? $r[1] : (isset(MAIL_TEXT[$default]) ? $default : 'de')]; }, array_values($out));
 }
 
-function mail_body(array $o, string $lang, string $base): array {
+function mail_body(array $o, string $lang, string $base, string $prefix = ''): array {
   $L = MAIL_TEXT[$lang];
   $c = $o['customer'];
   $lines = [$L['intro'], ''];
@@ -225,24 +225,34 @@ function mail_body(array $o, string $lang, string $base): array {
   }
   if ($base !== '') { $lines[] = ''; $lines[] = $L['view']; $lines[] = $base . '/?order=' . $o['code']; }
   $who = $c['company'] !== '' ? $c['company'] : $c['name'];
-  $subject = '=?UTF-8?B?' . base64_encode(str_replace('{code}', $o['code'], $L['subject']) . ($who !== '' ? ' · ' . $who : '')) . '?=';
+  if ($prefix !== '') array_unshift($lines, $prefix, '');
+  $subject = '=?UTF-8?B?' . base64_encode(($prefix !== '' ? $prefix . ' · ' : '') . str_replace('{code}', $o['code'], $L['subject']) . ($who !== '' ? ' · ' . $who : '')) . '?=';
   return [$subject, implode("\n", $lines)];
 }
 
-function notify(array $o): void {
-  global $CFG;
+/* Stuurt de akkoord-mail; geeft per ontvanger terug of PHP mail() hem heeft aangenomen, en logt dat in data/mail.log. */
+function notify(array $o, string $prefix = ''): array {
+  global $CFG, $DIR;
   $to = recipients();
-  if (!$to || !function_exists('mail')) return;
+  if (!$to || !function_exists('mail')) return [];
   $c = $o['customer'];
   $base = app_base();
   $from = mail_header_safe((string)($CFG['mail_from'] ?? ''));
   $headers = "MIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: 8bit\r\n" . ($from !== '' ? "From: Global Fire Company <$from>\r\n" : '');
   if (filter_var($c['email'], FILTER_VALIDATE_EMAIL)) $headers .= 'Reply-To: ' . mail_header_safe($c['email']) . "\r\n";
   $params = ($from !== '' && preg_match('/^[^@\s"]+@[^@\s"]+$/', $from)) ? '-f' . $from : '';
+  $result = [];
   foreach ($to as [$addr, $lang]) {
-    [$subject, $body] = mail_body($o, $lang, $base);
-    @mail($addr, $subject, $body, $headers, $params);
+    [$subject, $body] = mail_body($o, $lang, $base, $prefix);
+    $ok = $params !== '' ? @mail($addr, $subject, $body, $headers, $params) : false;
+    if (!$ok) $ok = @mail($addr, $subject, $body, $headers);  // sommige hosts weigeren de -f afzender
+    $result[] = ['to' => $addr, 'lang' => $lang, 'sent' => (bool)$ok];
   }
+  if (is_dir($DIR) || @mkdir($DIR, 0750, true)) {
+    $line = gmdate('c') . ' ' . $o['code'] . ' ' . implode(' ', array_map(function ($r) { return $r['to'] . '=' . ($r['sent'] ? 'ok' : 'FAILED'); }, $result)) . "\n";
+    @file_put_contents(dirname($DIR) . '/mail.log', $line, FILE_APPEND | LOCK_EX);
+  }
+  return $result;
 }
 
 /* ---------- verzoek afhandelen ---------- */
@@ -331,6 +341,18 @@ switch ($action) {
       return $o;
     });
     out(['ok' => true, 'order' => public_view($o)]);
+
+  case 'test_mail':
+    require_admin($in);
+    $host = strtolower(preg_replace('/^www\./', '', preg_replace('/:\d+$/', '', (string)($_SERVER['HTTP_HOST'] ?? ''))));
+    if (preg_match('/^[\d.]+$|^\[|^localhost$/', $host)) $host = '';  // lokaal testen: geen waarschuwing
+    $from = strtolower((string)($CFG['mail_from'] ?? ''));
+    $fromDomain = substr(strrchr($from, '@') ?: '', 1);
+    $sample = ['code' => 'TEST-TEST-TEST', 'customer' => clean_customer(['name' => 'Test', 'company' => 'Test', 'email' => '']),
+      'sheets' => ['sheet1' => ['Ambulance_Size_A_Type_1', 'Ambulance_Size_A_Type_1', null]]];
+    out(['ok' => true, 'mailFunction' => function_exists('mail'), 'recipients' => count(recipients()), 'from' => $from,
+      'fromMatchesHost' => $fromDomain !== '' && ($host === '' || $host === $fromDomain || substr($host, -strlen('.' . $fromDomain)) === '.' . $fromDomain),
+      'results' => notify($sample, 'TEST')]);
 
   case 'delete':
     require_admin($in);
