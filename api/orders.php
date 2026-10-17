@@ -459,6 +459,12 @@ switch ($action) {
     });
     out(['ok' => true, 'order' => public_view($o)]);
 
+  case 'make_hash':
+    require_admin($in);
+    $new = $in['newPassword'] ?? null;
+    if (!is_string($new) || strlen($new) < 12 || strlen($new) > 200 || strpbrk($new, "'\\") !== false) fail('bad_password_format');
+    out(['ok' => true, 'hash' => password_hash($new, PASSWORD_DEFAULT)]);
+
   case 'test_mail':
     require_admin($in);
     $host = strtolower(preg_replace('/^www\./', '', preg_replace('/:\d+$/', '', (string)($_SERVER['HTTP_HOST'] ?? ''))));

@@ -2,12 +2,12 @@
 <html lang="nl">
 <head>
 <meta charset="utf-8">
-<meta name="version" content="1.0.1">
+<meta name="version" content="1.0.2">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#2b3b6a">
 <title>Bestellingen · Global Fire Company</title>
-<link rel="stylesheet" href="css/app.css?v=1.0.1">
+<link rel="stylesheet" href="css/app.css?v=1.0.2">
 </head>
 <body class="admin">
 <div class="app">
@@ -68,6 +68,7 @@
             <button class="btn ghost small" id="btn-refresh" data-i18n="adminRefresh">Vernieuwen</button>
             <button class="btn ghost small" id="btn-csv" data-i18n="adminCsv">Exporteren (CSV)</button>
             <button class="btn ghost small" id="btn-testmail" data-i18n="adminTestMail">Testmail sturen</button>
+            <button class="btn ghost small" id="btn-hash" data-i18n="hashButton">Wachtwoord-hash maken</button>
           </div>
         </div>
         <div class="table-wrap">
@@ -80,6 +81,19 @@
           </table>
         </div>
         <div class="new-result" id="mail-result" hidden></div>
+        <form class="new-result" id="hash-form" hidden autocomplete="off" novalidate>
+          <p data-i18n="hashIntro">Maak een hash van een (nieuw) beheerwachtwoord. Zet de uitkomst in api/config.php bij admin_password; daarna staat het wachtwoord zelf nergens meer leesbaar op de server.</p>
+          <div class="row">
+            <input type="password" name="pw1" autocomplete="new-password" minlength="12" required data-i18n-placeholder="hashNew" placeholder="Nieuw wachtwoord (minstens 12 tekens)">
+            <input type="password" name="pw2" autocomplete="new-password" minlength="12" required data-i18n-placeholder="hashRepeat" placeholder="Herhaal">
+            <button class="btn primary small" data-i18n="hashMake">Maak hash</button>
+          </div>
+          <p class="form-error" id="hash-error" role="alert"></p>
+          <div id="hash-out" hidden>
+            <p class="hint" data-i18n="hashResult">Vervang in api/config.php de regel met admin_password door deze regel:</p>
+            <div class="row"><input readonly id="hash-line"><button type="button" class="btn primary small" id="hash-copy" data-i18n="hashCopy">Kopiëren</button></div>
+          </div>
+        </form>
         <p class="hint" id="empty" hidden data-i18n="adminEmpty">Nog geen bestellingen.</p>
       </section>
     </div>
@@ -88,12 +102,12 @@
       <p class="hint" id="disabled-text"></p>
     </section>
   </main>
-  <p class="app-version"><span id="app-version">v1.0.1</span></p>
+  <p class="app-version"><span id="app-version">v1.0.2</span></p>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
-<script src="js/data.js?v=1.0.1"></script>
-<script src="js/i18n.js?v=1.0.1"></script>
-<script src="js/pdf.js?v=1.0.1"></script>
-<script src="js/admin.js?v=1.0.1"></script>
+<script src="js/data.js?v=1.0.2"></script>
+<script src="js/i18n.js?v=1.0.2"></script>
+<script src="js/pdf.js?v=1.0.2"></script>
+<script src="js/admin.js?v=1.0.2"></script>
 </body>
 </html>
