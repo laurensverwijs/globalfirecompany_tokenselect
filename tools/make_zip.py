@@ -13,7 +13,7 @@ de instellingen op de server nooit overschrijft.
 import os, re, subprocess, sys, zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SKIP = ('tools/', 'dist/', '.gitignore')
+SKIP = ('tools/', 'dist/', '.gitignore', 'CLAUDE.md')
 
 
 def main():

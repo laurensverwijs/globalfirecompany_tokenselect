@@ -2,6 +2,11 @@
 
 Het versienummer staat in `VERSION`, in het beheer onderaan de pagina, en in de naam van de zip (`python3 tools/make_zip.py`).
 
+## 1.0.1 (17 oktober 2026)
+
+- Het beheerwachtwoord in `api/config.php` mag nu een hash zijn (uit `password_hash`), zodat het wachtwoord zelf niet meer leesbaar op de server staat. Een gewoon wachtwoord blijft werken.
+- `CLAUDE.md` met vaste afspraken over AVG, versleuteling, beveiliging en versienummers.
+
 ## 1.0.0 (17 oktober 2026)
 
 Eerste genummerde versie. Bevat:
