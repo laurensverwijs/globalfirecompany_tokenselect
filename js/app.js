@@ -20,7 +20,7 @@
     if (html != null) e.innerHTML = html;
     return e;
   };
-  var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var pct = function (v, total) { return (v / total * 100) + '%'; };
   var mm = function (s) { return s.w + ' × ' + s.h + ' mm'; };
   /* ---------- taal ---------- */

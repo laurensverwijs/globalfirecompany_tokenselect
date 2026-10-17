@@ -8,7 +8,7 @@
   var API = 'api/orders.php', SESSION_KEY = 'gfc-admin-session', LANG_KEY = 'gfc-sheet-samensteller-lang';
   var TOKEN = {}; DATA.tokens.forEach(function (t) { TOKEN[t.id] = t; });
   var $ = function (id) { return document.getElementById(id); };
-  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
 
   var lang = (function () {
     try { var s = localStorage.getItem(LANG_KEY); if (I18N[s]) return s; } catch (e) { }

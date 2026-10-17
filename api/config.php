@@ -23,8 +23,10 @@ return [
   'mail_lang' => 'de',
   // Afzender van die e-mail (gebruik een adres op het eigen domein, anders komt hij vaak in spam).
   'mail_from' => 'no-reply@global-fire-company.com',
-  // Adres van de app, voor de links in de e-mail. Leeg = automatisch (het adres waarop de app draait).
-  'app_url' => '',
+  // Adres van de app, voor de links in de akkoord-mail naar het beheer. Vul dit altijd in met het
+  // echte adres; laat je het leeg, dan staan er geen links in de mail (dat is veiliger dan een adres
+  // dat uit het verzoek wordt afgeleid, want dat kan vervalst worden). Pas dit aan als de app verhuist.
+  'app_url' => 'https://scenariogaming.com/global-fire-company/tokensheet',
 
   // Maximaal aantal nieuwe bestellingen per IP-adres per uur (tegen misbruik).
   'create_limit_per_hour' => 20,

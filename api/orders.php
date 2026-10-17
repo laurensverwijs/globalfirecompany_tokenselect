@@ -27,9 +27,17 @@ function out(array $data, int $code = 200): void {
 }
 function fail(string $error, int $code = 400): void { out(['ok' => false, 'error' => $error], $code); }
 
-function str($v, int $max): string {
+/* Enkele regel: alle stuurtekens eruit (ook tab/CR/LF, zodat ze nergens in een kop of lijst kunnen lekken).
+ * Meerdere regels (opmerkingen): CR wegnormaliseren, regeleindes en tabs behouden. */
+function str($v, int $max, bool $multiline = false): string {
   if (!is_string($v)) return '';
-  $v = trim(preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $v) ?? '');
+  if ($multiline) {
+    $v = preg_replace('/\r\n?/', "\n", $v) ?? '';
+    $v = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $v) ?? '';
+  } else {
+    $v = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $v) ?? '';
+  }
+  $v = trim($v);
   return function_exists('mb_substr') ? mb_substr($v, 0, $max) : substr($v, 0, $max);
 }
 
@@ -41,7 +49,7 @@ function clean_customer($c): array {
     'email' => str($c['email'] ?? '', 160),
     'phone' => str($c['phone'] ?? '', 60),
     'reference' => str($c['reference'] ?? '', 120),
-    'notes' => str($c['notes'] ?? '', 2000),
+    'notes' => str($c['notes'] ?? '', 2000, true),
   ];
 }
 
@@ -317,15 +325,12 @@ function log_event(array $o, string $by, string $what): array {
 
 function lang_of($v): string { return (is_string($v) && preg_match('/^[a-z]{2}$/', $v)) ? $v : ''; }
 
-/* Adres van de app: uit config, anders afgeleid van dit verzoek (…/sheet-organizer/). */
+/* Adres van de app voor de links in de e-mail: alleen uit config ('app_url').
+ * Nooit afgeleid van de Host-kop van het verzoek: die is door de bezoeker te vervalsen, waarmee
+ * iemand een nep-adres in de mail naar het beheer zou kunnen zetten. Zonder 'app_url' komen er geen links in de mail. */
 function app_base(): string {
   global $CFG;
-  $base = rtrim((string)($CFG['app_url'] ?? ''), '/');
-  if ($base !== '') return $base;
-  $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
-  $host = preg_replace('/[^A-Za-z0-9.:\-\[\]]/', '', (string)($_SERVER['HTTP_HOST'] ?? ''));
-  if ($host === '') return '';
-  return ($https ? 'https' : 'http') . '://' . $host . rtrim(str_replace('\\', '/', dirname(dirname((string)($_SERVER['SCRIPT_NAME'] ?? '/api/orders.php')))), '/');
+  return rtrim((string)($CFG['app_url'] ?? ''), '/');
 }
 
 const MAIL_TEXT = [

@@ -2,6 +2,13 @@
 
 Het versienummer staat in `VERSION`, in het beheer onderaan de pagina, en in de naam van de zip (`python3 tools/make_zip.py`).
 
+## 1.1.2 (17 oktober 2026)
+
+- Beveiligingscontrole uitgevoerd (code doorgelicht, aanvallen getest op een lokale kopie en een tweede controle door een aparte agent). Er is geen manier gevonden om in te breken; de app is goed beschermd. Drie kleine extra beschermingen doorgevoerd:
+- De links in de akkoord-mail komen nu alleen uit `app_url` in `api/config.php` en niet meer uit het adres van het verzoek (dat is door een bezoeker te vervalsen). Vul `app_url` daarom in.
+- Een enkele regel (naam, e-mail, telefoon, referentie) kan geen verborgen regeleindes meer bevatten; opmerkingen houden hun opmaak.
+- Ook de apostrof in klantgegevens wordt nu in de pagina ontsnapt (extra bescherming tegen XSS).
+
 ## 1.1.1 (17 oktober 2026)
 
 - Eigen icoontje (favicon) met het GFC-logo in plaats van dat van de website eromheen.
