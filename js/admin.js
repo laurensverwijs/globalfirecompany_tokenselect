@@ -1,11 +1,11 @@
 /* Global Fire Company – overzicht van bestellingen (admin.html).
- * Praat met api/orders.php; het wachtwoord staat in api/config.php.
+ * Praat met api/orders.php. Inloggen per gebruiker geeft een sessietoken; rol 'admin' ziet alles, rol 'user' alleen orders.
  */
 (function () {
   'use strict';
 
   var DATA = window.GFC_DATA, I18N = window.GFC_I18N, LANGS = Object.keys(I18N);
-  var API = 'api/orders.php', PW_KEY = 'gfc-admin-pw', LANG_KEY = 'gfc-sheet-samensteller-lang';
+  var API = 'api/orders.php', SESSION_KEY = 'gfc-admin-session', LANG_KEY = 'gfc-sheet-samensteller-lang';
   var TOKEN = {}; DATA.tokens.forEach(function (t) { TOKEN[t.id] = t; });
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
@@ -46,13 +46,19 @@
     else prompt(T('copyLink'), text);
   }
 
-  var pw = ''; try { pw = sessionStorage.getItem(PW_KEY) || ''; } catch (e) { }
+  var token = '', me = null;
+  try { var saved = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null'); if (saved && saved.token) { token = saved.token; me = saved.user; } } catch (e) { }
+  function setSession(t, u) {
+    token = t; me = u;
+    try { if (t) sessionStorage.setItem(SESSION_KEY, JSON.stringify({ token: t, user: u })); else sessionStorage.removeItem(SESSION_KEY); } catch (e) { }
+  }
+  function isAdmin() { return !!(me && me.role === 'admin'); }
   var orders = [], open = {};
   // link uit de e-mail: admin.html?order=CODE toont die order meteen, met de PDF-knop
   var focus = (function () { var m = /[?&]order=([A-Z0-9-]{14})/i.exec(location.search); return m ? m[1].toUpperCase() : ''; })();
 
   function call(body) {
-    body.password = pw;
+    if (token) body.token = token;
     return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then(function (r) { return r.text(); })
       .then(function (txt) {
@@ -67,14 +73,20 @@
     $('board').hidden = view !== 'board';
     $('disabled').hidden = view !== 'disabled' && view !== 'offline';
     $('btn-logout').hidden = view !== 'board';
+    $('btn-mypw').hidden = view !== 'board' || !me || me.master;
+    $('who').hidden = view !== 'board';
+    if (me) $('who').textContent = T('adminWho', { name: me.name, role: T('role_' + me.role) });
+    ['btn-testmail', 'btn-hash', 'users-panel'].forEach(function (id) { $(id).hidden = view !== 'board' || !isAdmin(); });
+    if (view !== 'board') { $('mypw-form').hidden = true; $('hash-form').hidden = true; }
     if (view === 'disabled' || view === 'offline') {
       $('disabled-text').textContent = T(view === 'disabled' ? 'adminDisabled' : 'adminOffline');
     }
   }
 
   function handleError(e) {
-    if (e && e.error === 'bad_password') { pw = ''; try { sessionStorage.removeItem(PW_KEY); } catch (x) { } show('login'); $('login-error').textContent = T('adminBadPassword'); return; }
-    if (e && e.error === 'rate_limited') { pw = ''; try { sessionStorage.removeItem(PW_KEY); } catch (x) { } show('login'); $('login-error').textContent = T('adminLocked'); return; }
+    if (e && e.error === 'bad_password') { setSession('', null); show('login'); $('login-error').textContent = T('adminBadPassword'); return; }
+    if (e && e.error === 'rate_limited') { setSession('', null); show('login'); $('login-error').textContent = T('adminLocked'); return; }
+    if (e && e.error && T('err_' + e.error) !== 'err_' + e.error) { toast(T('err_' + e.error), true); return; }
     if (e && e.error === 'admin_disabled') { show('disabled'); return; }
     if (e && e.error === 'offline') { show('offline'); return; }
     toast(T('errOffline'), true);
@@ -82,8 +94,8 @@
 
   function refresh() {
     return call({ action: 'list' }).then(function (d) {
-      try { sessionStorage.setItem(PW_KEY, pw); } catch (e) { }
       orders = d.orders; show('board');
+      if (isAdmin()) loadUsers();
       if (focus) {
         var hit = orders.some(function (o) { return o.code === focus; });
         if (hit) { $('q').value = focus; $('filter').value = ''; open[focus] = true; }
@@ -124,7 +136,7 @@
         '<td class="row-actions">' + (o.status !== 'draft' && o.filled ? '<button class="btn primary small" data-act="pdf">' + esc(T('pdfDownload')) + '</button>' : '') +
         '<button class="btn ghost small" data-act="details">' + esc(T(open[o.code] ? 'adminHide' : 'adminDetails')) + '</button>' +
         '<button class="btn ghost small" data-act="copy">' + esc(T('copyLink')) + '</button>' +
-        '<button class="btn ghost small" data-act="delete">' + esc(T('adminDelete')) + '</button></td>';
+        (isAdmin() ? '<button class="btn ghost small" data-act="delete">' + esc(T('adminDelete')) + '</button>' : '') + '</td>';
       tr.querySelector('.status').onchange = function (e) {
         call({ action: 'status', code: o.code, status: e.target.value }).then(function (d) {
           o.status = d.order.status; o.updatedAt = d.order.updatedAt; renderRows(); toast(T('adminStatusSaved'));
@@ -135,7 +147,7 @@
       tr.querySelector('[data-act="details"]').onclick = function () { open[o.code] = !open[o.code]; renderRows(); };
       tr.querySelector('[data-act="copy"]').onclick = function () { copy(appUrl(o.code, o.lang)); };
       var del = tr.querySelector('[data-act="delete"]');
-      del.onclick = function () {
+      if (del) del.onclick = function () {
         if (!del.classList.contains('armed')) {
           del.classList.add('armed'); del.textContent = T('adminDeleteConfirm');
           setTimeout(function () { del.classList.remove('armed'); del.textContent = T('adminDelete'); }, 3000);
@@ -175,6 +187,11 @@
       html += '<div><h3>' + esc(sheetName(sid)) + '</h3><ul class="counts">' +
         keys.map(function (k) { return '<li><span>' + esc(tokenName(k)) + '</span><b>' + tally[k] + '×</b></li>'; }).join('') + '</ul></div>';
     });
+    if (o.createdBy && o.createdBy !== 'customer') html += '<div><h3>' + esc(T('adminHistory')) + '</h3><ul class="counts">' +
+      [{ at: o.createdAt, by: o.createdBy, what: 'created' }].concat((o.log || []).filter(function (l) { return l.what !== 'created'; })).map(function (l) {
+        var what = l.what.indexOf('status:') === 0 ? T('status_' + l.what.slice(7)) : T('log_' + l.what);
+        return '<li><span>' + esc(fmtDate(l.at)) + ' · ' + esc(what) + '</span><b>' + esc(l.by === 'customer' ? T('logCustomer') : l.by) + '</b></li>';
+      }).join('') + '</ul></div>';
     var info = [['fPhone', c.phone], ['fReference', c.reference], ['adminLang', o.lang ? o.lang.toUpperCase() : ''], ['fNotes', c.notes]].filter(function (x) { return x[1]; });
     if (info.length) html += '<div><h3>' + esc(T('adminCustomer')) + '</h3><dl>' + info.map(function (x) { return '<dt>' + esc(T(x[0])) + '</dt><dd>' + esc(x[1]) + '</dd>'; }).join('') + '</dl></div>';
     html += '</div><p><a class="btn small" href="' + esc(appUrl(o.code)) + '" target="_blank" rel="noopener">' + esc(T('adminOpenPrint')) + '</a></p></td>';
@@ -216,8 +233,84 @@
     });
   }
 
-  $('login-form').onsubmit = function (e) { e.preventDefault(); pw = $('pw').value; $('login-error').textContent = ''; refresh(); };
-  $('btn-logout').onclick = function () { pw = ''; try { sessionStorage.removeItem(PW_KEY); } catch (e) { } orders = []; show('login'); };
+  $('login-form').onsubmit = function (e) {
+    e.preventDefault(); $('login-error').textContent = '';
+    call({ action: 'login', username: $('user').value.trim(), password: $('pw').value }).then(function (d) {
+      $('pw').value = ''; setSession(d.token, d.user); refresh();
+    }, handleError);
+  };
+  $('btn-logout').onclick = function () {
+    if (token) call({ action: 'logout' }).catch(function () { });
+    setSession('', null); orders = []; users = []; show('login');
+  };
+
+  /* ---------- gebruikers (alleen rol admin) ---------- */
+  var users = [];
+  function loadUsers() { return call({ action: 'users' }).then(function (d) { users = d.users; renderUsers(); }, handleError); }
+  function roleOptions(cur) { return ['user', 'admin'].map(function (r) { return '<option value="' + r + '"' + (r === cur ? ' selected' : '') + '>' + esc(T('role_' + r)) + '</option>'; }).join(''); }
+  function renderUsers() {
+    var tb = $('user-rows'); tb.innerHTML = '';
+    $('users-empty').hidden = users.length > 0;
+    users.forEach(function (u) {
+      var tr = document.createElement('tr');
+      tr.className = u.active ? '' : 'inactive';
+      tr.innerHTML = '<td><b>' + esc(u.name) + '</b></td>' +
+        '<td><select class="role" aria-label="' + esc(T('userRole')) + '">' + roleOptions(u.role) + '</select></td>' +
+        '<td>' + esc(u.active ? T('userActive') : T('userBlocked')) + '</td>' +
+        '<td>' + (u.lastLogin ? esc(fmtDate(u.lastLogin)) : '<span class="muted">–</span>') + '</td>' +
+        '<td class="row-actions"><button class="btn ghost small" data-act="reset">' + esc(T('userReset')) + '</button>' +
+        '<button class="btn ghost small" data-act="block">' + esc(T(u.active ? 'userBlock' : 'userUnblock')) + '</button>' +
+        '<button class="btn ghost small" data-act="delete">' + esc(T('adminDelete')) + '</button></td>';
+      var save = function (extra) {
+        return call(Object.assign({ action: 'user_save', name: u.name, role: tr.querySelector('.role').value }, extra || {})).then(function (d) { users = d.users; renderUsers(); toast(T('userSaved')); }, handleError);
+      };
+      tr.querySelector('.role').onchange = function () { save(); };
+      tr.querySelector('[data-act="block"]').onclick = function () { save({ active: !u.active }); };
+      tr.querySelector('[data-act="reset"]').onclick = function () {
+        var p = prompt(T('userResetPrompt', { name: u.name }));
+        if (p == null) return;
+        if (p.length < 12) { toast(T('hashTooShort'), true); return; }
+        save({ password: p });
+      };
+      var del = tr.querySelector('[data-act="delete"]');
+      del.onclick = function () {
+        if (!del.classList.contains('armed')) {
+          del.classList.add('armed'); del.textContent = T('adminDeleteConfirm');
+          setTimeout(function () { del.classList.remove('armed'); del.textContent = T('adminDelete'); }, 3000);
+          return;
+        }
+        call({ action: 'user_delete', name: u.name }).then(function (d) { users = d.users; renderUsers(); }, handleError);
+      };
+      tb.appendChild(tr);
+    });
+  }
+  $('user-form').onsubmit = function (e) {
+    e.preventDefault();
+    var f = e.target, name = f.elements.name.value.trim().toLowerCase(), p = f.elements.password.value;
+    $('user-error').textContent = '';
+    if (!/^[a-z0-9._@-]{2,60}$/.test(name) || name === 'admin') { $('user-error').textContent = T('err_bad_username'); return; }
+    if (p.length < 12) { $('user-error').textContent = T('hashTooShort'); return; }
+    if (users.some(function (u) { return u.name === name; })) { $('user-error').textContent = T('userExists'); return; }
+    call({ action: 'user_save', name: name, role: f.elements.role.value, password: p }).then(function (d) {
+      users = d.users; renderUsers(); f.reset(); toast(T('userCreated', { name: name }));
+    }, handleError);
+  };
+
+  /* ---------- eigen wachtwoord wijzigen ---------- */
+  $('btn-mypw').onclick = function () { var f = $('mypw-form'); f.hidden = !f.hidden; if (!f.hidden) f.elements.old.focus(); };
+  $('mypw-form').onsubmit = function (e) {
+    e.preventDefault();
+    var f = e.target, n = f.elements.pw1.value;
+    $('mypw-error').textContent = '';
+    if (n.length < 12) { $('mypw-error').textContent = T('hashTooShort'); return; }
+    if (n !== f.elements.pw2.value) { $('mypw-error').textContent = T('hashMismatch'); return; }
+    call({ action: 'password', old: f.elements.old.value, new: n }).then(function () {
+      f.reset(); f.hidden = true; toast(T('mypwSaved'));
+    }, function (err) {
+      if (err && err.error === 'bad_old_password') { $('mypw-error').textContent = T('err_bad_old_password'); return; }
+      handleError(err);
+    });
+  };
   $('btn-refresh').onclick = refresh;
   $('btn-csv').onclick = csv;
   $('btn-testmail').onclick = function () {
@@ -274,6 +367,6 @@
   applyLang();
   fetch(API + '?action=ping', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
     if (!d.admin) { show('disabled'); return; }
-    if (pw) refresh(); else show('login');
+    if (token) refresh(); else show('login');
   }).catch(function () { show('offline'); });
 })();

@@ -2,6 +2,14 @@
 
 Het versienummer staat in `VERSION`, in het beheer onderaan de pagina, en in de naam van de zip (`python3 tools/make_zip.py`).
 
+## 1.1.0 (17 oktober 2026)
+
+- Gebruikers met eigen naam en wachtwoord. Rol **Beheerder**: alles. Rol **Gebruiker**: bestellingen aanmaken, bekijken, status wijzigen en PDF downloaden.
+- De hoofdbeheerder blijft `admin` met het wachtwoord uit `api/config.php`; die maakt de andere gebruikers aan.
+- Wachtwoorden staan als hash in de versleutelde gebruikerslijst; na inloggen gebruikt de browser een sessie van 12 uur in plaats van het wachtwoord.
+- Iedere gebruiker kan zijn eigen wachtwoord wijzigen; de beheerder kan gebruikers blokkeren, een nieuw wachtwoord geven of verwijderen.
+- Per bestelling wordt bijgehouden wie hem aanmaakte en wie de status wijzigde (Details → Geschiedenis).
+
 ## 1.0.2 (17 oktober 2026)
 
 - Knop **Wachtwoord-hash maken** in het beheer: typ een nieuw wachtwoord en je krijgt de regel om in `api/config.php` te plakken.

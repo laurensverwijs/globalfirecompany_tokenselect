@@ -7,7 +7,7 @@
  *
  * Klant:  GET  ?action=ping | ?action=get&code=…
  *         POST {action: create | save | submit, …}
- * Beheer: POST {action: list | admin_create | status | delete, password, …}
+ * Beheer: POST {action: login} geeft een token; daarna {action: list | admin_create | status | delete | users | user_save | user_delete | password | test_mail, token, …}
  */
 declare(strict_types=1);
 
@@ -206,21 +206,113 @@ function rate_limited(int $limit, string $name = 'ratelimit', bool $record = tru
   return $limited;
 }
 
-function require_admin(array $in): void {
+/* ---------- gebruikers en inloggen ----------
+ * Hoofdbeheerder: gebruikersnaam "admin" met admin_password uit config.php (platte tekst of hash).
+ * Overige gebruikers staan versleuteld in data/users.json, met rol 'admin' (alles) of 'user' (orders maken, bekijken, status, PDF).
+ * Na inloggen krijgt de browser een sessietoken (12 uur geldig); het wachtwoord wordt niet bewaard. */
+const ROLES = ['admin', 'user'];
+const SESSION_HOURS = 12;
+
+function master_password(): string {
   global $CFG;
   $pw = (string)($CFG['admin_password'] ?? '');
-  if ($pw === '' || $pw === 'wijzig-mij') fail('admin_disabled', 403);
-  // na te veel foute pogingen vanaf één IP-adres: een uur geblokkeerd
+  return ($pw === '' || $pw === 'wijzig-mij') ? '' : $pw;
+}
+function check_password(string $given, string $stored): bool {
+  if ($stored === '') return false;
+  return preg_match('/^\$(2y|argon2i|argon2id)\$/', $stored) === 1 ? password_verify($given, $stored) : hash_equals($stored, $given);
+}
+function valid_username($u): bool { return is_string($u) && preg_match('/^[a-z0-9._@-]{2,60}$/', $u) === 1; }
+
+/* Leest of wijzigt de gebruikerslijst onder een slot; $fn krijgt de lijst en geeft hem gewijzigd terug. */
+function users(?callable $fn = null): array {
+  global $DIR;
+  $file = dirname($DIR) . '/users.json';
+  if (!is_dir(dirname($file))) return [];
+  $fh = @fopen($file, 'c+');
+  if (!$fh || !flock($fh, $fn ? LOCK_EX : LOCK_SH)) fail('storage', 500);
+  $raw = json_decode((string)stream_get_contents($fh), true);
+  $list = (is_array($raw) && is_string($raw['enc'] ?? null)) ? (decrypt_data($raw['enc']) ?? []) : [];
+  if ($fn) {
+    $list = array_values($fn($list));
+    ftruncate($fh, 0); rewind($fh);
+    fwrite($fh, json_encode(['enc' => encrypt_data($list)]));
+    @chmod($file, 0600);
+  }
+  flock($fh, LOCK_UN); fclose($fh);
+  return $list;
+}
+function find_user(array $list, string $name): ?array {
+  foreach ($list as $u) if (($u['name'] ?? '') === $name) return $u;
+  return null;
+}
+
+/* Sessies: alleen de hash van het token wordt bewaard. */
+function sessions(?callable $fn = null): array {
+  global $DIR;
+  if (!is_dir($DIR) && !@mkdir($DIR, 0750, true)) fail('storage', 500);
+  $fh = fopen($DIR . '/.sessions.json', 'c+');
+  if (!$fh || !flock($fh, LOCK_EX)) fail('storage', 500);
+  $data = json_decode((string)stream_get_contents($fh), true) ?: [];
+  $now = time();
+  foreach ($data as $k => $v) if (($v['exp'] ?? 0) < $now) unset($data[$k]);
+  if ($fn) $data = $fn($data);
+  ftruncate($fh, 0); rewind($fh); fwrite($fh, json_encode($data));
+  flock($fh, LOCK_UN); fclose($fh);
+  return $data;
+}
+
+function login(array $in): array {
+  global $CFG;
   $max = (int)($CFG['login_attempts_per_hour'] ?? 10);
   if (rate_limited($max, 'loginfail', false)) fail('rate_limited', 429);
-  // admin_password mag een hash zijn (uit password_hash, begint met $2y$ of $argon2), of platte tekst
-  $given = is_string($in['password'] ?? null) ? $in['password'] : null;
-  $isHash = preg_match('/^\$(2y|argon2i|argon2id)\$/', $pw) === 1;
-  if ($given === null || !($isHash ? password_verify($given, $pw) : hash_equals($pw, $given))) {
+  $name = strtolower(trim((string)($in['username'] ?? '')));
+  if ($name === '') $name = 'admin';
+  $given = is_string($in['password'] ?? null) ? $in['password'] : '';
+  $user = null;
+  if ($name === 'admin' && master_password() !== '') {
+    if (check_password($given, master_password())) $user = ['name' => 'admin', 'role' => 'admin', 'master' => true];
+  } elseif (valid_username($name)) {
+    $u = find_user(users(), $name);
+    if ($u && !empty($u['active']) && check_password($given, (string)($u['hash'] ?? ''))) $user = ['name' => $u['name'], 'role' => $u['role']];
+  }
+  if (!$user) {
+    if (master_password() === '' && !users()) fail('admin_disabled', 403);
     rate_limited($max, 'loginfail');
     usleep(400000);
     fail('bad_password', 401);
   }
+  $token = bin2hex(random_bytes(32));
+  sessions(function ($d) use ($token, $user) { $d[hash('sha256', $token)] = $user + ['exp' => time() + SESSION_HOURS * 3600]; return $d; });
+  if (empty($user['master'])) users(function ($l) use ($user) { foreach ($l as &$u) if ($u['name'] === $user['name']) $u['lastLogin'] = gmdate('c'); return $l; });
+  return ['token' => $token, 'user' => ['name' => $user['name'], 'role' => $user['role'], 'master' => !empty($user['master'])]];
+}
+
+/* Controleert het sessietoken en de rol; geeft de gebruiker terug. Een geblokkeerde of verwijderde gebruiker is direct uitgelogd. */
+function require_user(array $in, string $role = 'user'): array {
+  $token = is_string($in['token'] ?? null) ? $in['token'] : '';
+  if (!preg_match('/^[0-9a-f]{64}$/', $token)) fail('bad_password', 401);
+  $key = hash('sha256', $token);
+  $s = sessions()[$key] ?? null;
+  if (!$s) fail('bad_password', 401);
+  if (empty($s['master'])) {
+    $u = find_user(users(), $s['name']);
+    if (!$u || empty($u['active'])) { sessions(function ($d) use ($key) { unset($d[$key]); return $d; }); fail('bad_password', 401); }
+    $s['role'] = $u['role'];
+  } elseif (master_password() === '') fail('bad_password', 401);
+  if ($role === 'admin' && $s['role'] !== 'admin') fail('forbidden', 403);
+  return $s;
+}
+
+function user_view(array $u): array {
+  return ['name' => $u['name'], 'role' => $u['role'], 'active' => !empty($u['active']), 'createdAt' => $u['createdAt'] ?? '', 'lastLogin' => $u['lastLogin'] ?? ''];
+}
+function new_password_ok($p): bool { return is_string($p) && strlen($p) >= 12 && strlen($p) <= 200; }
+
+/* Logboek per order: wie deed wat (AVG: verantwoording). */
+function log_event(array $o, string $by, string $what): array {
+  $o['log'] = array_slice(array_merge((array)($o['log'] ?? []), [['at' => gmdate('c'), 'by' => $by, 'what' => $what]]), -50);
+  return $o;
 }
 
 function lang_of($v): string { return (is_string($v) && preg_match('/^[a-z]{2}$/', $v)) ? $v : ''; }
@@ -384,7 +476,7 @@ housekeeping();
 switch ($action) {
   case 'ping':
     out(['ok' => true, 'publicCreate' => !empty($CFG['public_create']),
-      'admin' => !in_array((string)($CFG['admin_password'] ?? ''), ['', 'wijzig-mij'], true),
+      'admin' => master_password() !== '' || count(users()) > 0,
       'retentionMonths' => (int)($CFG['retention_months'] ?? 6),
       'version' => trim((string)@file_get_contents(dirname(__DIR__) . '/VERSION'))]);
 
@@ -420,14 +512,27 @@ switch ($action) {
         if (!$filled) fail('empty_order', 422);
         $o['status'] = 'submitted';
         $o['submittedAt'] = $o['updatedAt'];
+        $o = log_event($o, 'customer', 'submitted');
       }
       return $o;
     });
     if ($action === 'submit') notify($o);
     out(['ok' => true, 'order' => public_view($o)]);
 
+  case 'login':
+    out(['ok' => true] + login($in));
+
+  case 'logout':
+    $t = is_string($in['token'] ?? null) ? $in['token'] : '';
+    sessions(function ($d) use ($t) { unset($d[hash('sha256', $t)]); return $d; });
+    out(['ok' => true]);
+
+  case 'me':
+    $me = require_user($in);
+    out(['ok' => true, 'user' => ['name' => $me['name'], 'role' => $me['role'], 'master' => !empty($me['master'])]]);
+
   case 'list':
-    require_admin($in);
+    require_user($in);
     $list = [];
     foreach (glob($DIR . '/*.json') ?: [] as $f) {
       $o = read_order_file($f);
@@ -438,35 +543,36 @@ switch ($action) {
         $filled += $n; $total += count($slots);
         if ($n) $perSheet[$id] = array_count_values(array_filter($slots, 'is_string'));
       }
-      $list[] = public_view($o) + ['createdBy' => $o['createdBy'] ?? '', 'filled' => $filled, 'totals' => (object)$perSheet];
+      $list[] = public_view($o) + ['createdBy' => $o['createdBy'] ?? '', 'log' => $o['log'] ?? [], 'filled' => $filled, 'totals' => (object)$perSheet];
     }
     usort($list, function ($a, $b) { return strcmp($b['updatedAt'], $a['updatedAt']); });
     out(['ok' => true, 'orders' => $list]);
 
   case 'admin_create':
-    require_admin($in);
-    $o = create_order(clean_customer($in['customer'] ?? []), lang_of($in['lang'] ?? ''), 'admin');
+    $me = require_user($in);
+    $o = create_order(clean_customer($in['customer'] ?? []), lang_of($in['lang'] ?? ''), $me['name']);
+    $o = with_order($o['code'], function (array $o) use ($me) { return log_event($o, $me['name'], 'created'); });
     out(['ok' => true, 'order' => public_view($o)]);
 
   case 'status':
-    require_admin($in);
+    $me = require_user($in);
     if (!valid_code($in['code'] ?? null)) fail('bad_code');
     if (!in_array($in['status'] ?? null, STATUSES, true)) fail('bad_status');
-    $o = with_order($in['code'], function (array $o) use ($in) {
+    $o = with_order($in['code'], function (array $o) use ($in, $me) {
       $o['status'] = $in['status'];
       $o['updatedAt'] = gmdate('c');
-      return $o;
+      return log_event($o, $me['name'], 'status:' . $in['status']);
     });
     out(['ok' => true, 'order' => public_view($o)]);
 
   case 'make_hash':
-    require_admin($in);
+    require_user($in, 'admin');
     $new = $in['newPassword'] ?? null;
     if (!is_string($new) || strlen($new) < 12 || strlen($new) > 200 || strpbrk($new, "'\\") !== false) fail('bad_password_format');
     out(['ok' => true, 'hash' => password_hash($new, PASSWORD_DEFAULT)]);
 
   case 'test_mail':
-    require_admin($in);
+    require_user($in, 'admin');
     $host = strtolower(preg_replace('/^www\./', '', preg_replace('/:\d+$/', '', (string)($_SERVER['HTTP_HOST'] ?? ''))));
     if (preg_match('/^[\d.]+$|^\[|^localhost$/', $host)) $host = '';  // lokaal testen: geen waarschuwing
     $from = strtolower((string)($CFG['mail_from'] ?? ''));
@@ -477,8 +583,53 @@ switch ($action) {
       'fromMatchesHost' => $fromDomain !== '' && ($host === '' || $host === $fromDomain || substr($host, -strlen('.' . $fromDomain)) === '.' . $fromDomain),
       'results' => notify($sample, 'TEST')]);
 
+  case 'users':
+    require_user($in, 'admin');
+    out(['ok' => true, 'users' => array_map('user_view', users())]);
+
+  case 'user_save':
+    $me = require_user($in, 'admin');
+    $name = strtolower(trim((string)($in['name'] ?? '')));
+    if (!valid_username($name) || $name === 'admin') fail('bad_username');
+    $role = in_array($in['role'] ?? null, ROLES, true) ? $in['role'] : 'user';
+    $pw = $in['password'] ?? null;
+    if ($pw !== null && $pw !== '' && !new_password_ok($pw)) fail('bad_password_format');
+    users(function ($list) use ($name, $role, $pw, $in) {
+      $found = false;
+      foreach ($list as &$u) {
+        if ($u['name'] !== $name) continue;
+        $found = true;
+        $u['role'] = $role;
+        if (array_key_exists('active', $in)) $u['active'] = (bool)$in['active'];
+        if (is_string($pw) && $pw !== '') $u['hash'] = password_hash($pw, PASSWORD_DEFAULT);
+      }
+      unset($u);
+      if (!$found) {
+        if (!is_string($pw) || $pw === '') fail('bad_password_format');
+        if (count($list) >= 50) fail('too_many_users');
+        $list[] = ['name' => $name, 'role' => $role, 'hash' => password_hash($pw, PASSWORD_DEFAULT), 'active' => true, 'createdAt' => gmdate('c')];
+      }
+      return $list;
+    });
+    out(['ok' => true, 'users' => array_map('user_view', users())]);
+
+  case 'user_delete':
+    require_user($in, 'admin');
+    $name = (string)($in['name'] ?? '');
+    users(function ($list) use ($name) { return array_filter($list, function ($u) use ($name) { return $u['name'] !== $name; }); });
+    out(['ok' => true, 'users' => array_map('user_view', users())]);
+
+  case 'password':
+    $me = require_user($in);
+    if (!empty($me['master'])) fail('master_password');
+    $u = find_user(users(), $me['name']);
+    if (!$u || !check_password((string)($in['old'] ?? ''), (string)$u['hash'])) { usleep(400000); fail('bad_old_password', 401); }
+    if (!new_password_ok($in['new'] ?? null)) fail('bad_password_format');
+    users(function ($list) use ($me, $in) { foreach ($list as &$x) if ($x['name'] === $me['name']) $x['hash'] = password_hash($in['new'], PASSWORD_DEFAULT); return $list; });
+    out(['ok' => true]);
+
   case 'delete':
-    require_admin($in);
+    require_user($in, 'admin');
     if (!valid_code($in['code'] ?? null)) fail('bad_code');
     if (!is_file(path_for($in['code']))) fail('not_found', 404);
     @unlink(path_for($in['code']));
