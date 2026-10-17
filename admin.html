@@ -2,12 +2,12 @@
 <html lang="nl">
 <head>
 <meta charset="utf-8">
-<meta name="version" content="1.0.2">
+<meta name="version" content="1.1.0">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#2b3b6a">
 <title>Bestellingen · Global Fire Company</title>
-<link rel="stylesheet" href="css/app.css?v=1.0.2">
+<link rel="stylesheet" href="css/app.css?v=1.1.0">
 </head>
 <body class="admin">
 <div class="app">
@@ -22,6 +22,8 @@
     <div class="actions">
       <div class="lang-switch" id="lang-switch" role="group"></div>
       <a class="btn ghost" href="./" data-i18n="adminToApp">Naar de app</a>
+      <span class="who" id="who" hidden></span>
+      <button class="btn ghost" id="btn-mypw" data-i18n="mypwButton" hidden>Mijn wachtwoord</button>
       <button class="btn ghost" id="btn-logout" data-i18n="adminLogout" hidden>Uitloggen</button>
     </div>
   </header>
@@ -30,6 +32,10 @@
     <section class="panel" id="login" hidden>
       <h2 data-i18n="adminLogin">Inloggen</h2>
       <form id="login-form" class="code-form">
+        <label for="user" data-i18n="adminUser">Gebruikersnaam</label>
+        <div class="row">
+          <input id="user" autocomplete="username" autocapitalize="none" spellcheck="false" data-i18n-placeholder="adminUserHint" placeholder="admin">
+        </div>
         <label for="pw" data-i18n="adminPassword">Wachtwoord</label>
         <div class="row">
           <input id="pw" type="password" autocomplete="current-password" required>
@@ -40,6 +46,16 @@
     </section>
 
     <div id="board" hidden>
+      <form class="panel" id="mypw-form" hidden autocomplete="off" novalidate>
+        <h2 data-i18n="mypwTitle">Mijn wachtwoord wijzigen</h2>
+        <div class="fields cols">
+          <label><span data-i18n="mypwOld">Huidig wachtwoord</span><input type="password" name="old" autocomplete="current-password"></label>
+          <label><span data-i18n="hashNew">Nieuw wachtwoord (minstens 12 tekens)</span><input type="password" name="pw1" autocomplete="new-password"></label>
+          <label><span data-i18n="hashRepeat">Herhaal</span><input type="password" name="pw2" autocomplete="new-password"></label>
+        </div>
+        <p class="form-error" id="mypw-error" role="alert"></p>
+        <div class="dialog-actions"><button class="btn primary" data-i18n="mypwSave">Opslaan</button></div>
+      </form>
       <section class="panel">
         <h2 data-i18n="adminNew">Nieuwe bestelling voor een klant</h2>
         <p class="hint" data-i18n="adminNewHint">Maak een bestelling aan en stuur de klant de link. De klant vult de sheets, kan tussendoor opslaan en geeft tot slot akkoord.</p>
@@ -96,18 +112,37 @@
         </form>
         <p class="hint" id="empty" hidden data-i18n="adminEmpty">Nog geen bestellingen.</p>
       </section>
+
+      <section class="panel" id="users-panel" hidden>
+        <h2 data-i18n="usersTitle">Gebruikers</h2>
+        <p class="hint" data-i18n="usersHint">Iedere gebruiker logt in met een eigen naam en wachtwoord. Een gebruiker kan bestellingen aanmaken, bekijken, de status wijzigen en de PDF downloaden. Een beheerder kan daarnaast bestellingen verwijderen, gebruikers beheren en de testmail sturen.</p>
+        <div class="table-wrap">
+          <table class="orders users">
+            <thead><tr><th data-i18n="userName">Gebruikersnaam</th><th data-i18n="userRole">Rol</th><th data-i18n="adminStatus">Status</th><th data-i18n="userLastLogin">Laatst ingelogd</th><th></th></tr></thead>
+            <tbody id="user-rows"></tbody>
+          </table>
+        </div>
+        <p class="hint" id="users-empty" hidden data-i18n="usersEmpty">Nog geen gebruikers. Je logt nu in als admin met het wachtwoord uit config.php.</p>
+        <form id="user-form" class="fields cols" autocomplete="off" novalidate>
+          <label><span data-i18n="userName">Gebruikersnaam</span><input name="name" maxlength="60" autocapitalize="none" spellcheck="false" data-i18n-placeholder="userNameHint" placeholder="bijv. daniel"></label>
+          <label><span data-i18n="userRole">Rol</span><select name="role"><option value="user" data-i18n="role_user">Gebruiker</option><option value="admin" data-i18n="role_admin">Beheerder</option></select></label>
+          <label><span data-i18n="userFirstPw">Startwachtwoord (minstens 12 tekens)</span><input type="password" name="password" autocomplete="new-password"></label>
+          <div class="submit-cell"><button class="btn primary" data-i18n="userAdd">Gebruiker toevoegen</button></div>
+        </form>
+        <p class="form-error" id="user-error" role="alert"></p>
+      </section>
     </div>
     <section class="panel" id="disabled" hidden>
       <h2 data-i18n="adminDisabledTitle">Beheer staat uit</h2>
       <p class="hint" id="disabled-text"></p>
     </section>
   </main>
-  <p class="app-version"><span id="app-version">v1.0.2</span></p>
+  <p class="app-version"><span id="app-version">v1.1.0</span></p>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
-<script src="js/data.js?v=1.0.2"></script>
-<script src="js/i18n.js?v=1.0.2"></script>
-<script src="js/pdf.js?v=1.0.2"></script>
-<script src="js/admin.js?v=1.0.2"></script>
+<script src="js/data.js?v=1.1.0"></script>
+<script src="js/i18n.js?v=1.1.0"></script>
+<script src="js/pdf.js?v=1.1.0"></script>
+<script src="js/admin.js?v=1.1.0"></script>
 </body>
 </html>
