@@ -213,7 +213,10 @@ function require_admin(array $in): void {
   // na te veel foute pogingen vanaf één IP-adres: een uur geblokkeerd
   $max = (int)($CFG['login_attempts_per_hour'] ?? 10);
   if (rate_limited($max, 'loginfail', false)) fail('rate_limited', 429);
-  if (!is_string($in['password'] ?? null) || !hash_equals($pw, $in['password'])) {
+  // admin_password mag een hash zijn (uit password_hash, begint met $2y$ of $argon2), of platte tekst
+  $given = is_string($in['password'] ?? null) ? $in['password'] : null;
+  $isHash = preg_match('/^\$(2y|argon2i|argon2id)\$/', $pw) === 1;
+  if ($given === null || !($isHash ? password_verify($given, $pw) : hash_equals($pw, $given))) {
     rate_limited($max, 'loginfail');
     usleep(400000);
     fail('bad_password', 401);

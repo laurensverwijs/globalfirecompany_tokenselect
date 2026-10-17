@@ -3,6 +3,9 @@
 return [
   // Wachtwoord voor admin.html. Zolang dit 'wijzig-mij' is, is het beheer uitgeschakeld.
   'admin_password' => 'wijzig-mij',
+  // Veiliger: zet hier een hash in plaats van het wachtwoord zelf. Maak die met
+  //   php -r "echo password_hash('jouw-wachtwoord', PASSWORD_DEFAULT);"
+  // en plak de uitkomst (begint met $2y$) tussen enkele aanhalingstekens.
 
   // Mogen klanten zelf een nieuwe bestelling starten? false = alleen GFC maakt orders aan in admin.html
   // en stuurt de klant de link.
