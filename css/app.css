@@ -322,3 +322,4 @@ table.orders tr.focus + tr.details td { background: rgba(25, 137, 202, .08); }
   .print-page .cut { position: absolute; border: 0.25mm solid #1d7fc4; }
   .print-page .label { position: absolute; left: 4mm; bottom: 3mm; font: 7pt system-ui, sans-serif; color: #555; }
 }
+.app-version { margin: 24px 0 8px; text-align: center; font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; color: var(--ink-3); }

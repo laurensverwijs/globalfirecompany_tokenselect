@@ -82,6 +82,8 @@ Koppel je Netlify aan de GitHub-repo, dan wordt elke merge naar `main` automatis
    `<iframe src="https://www.global-fire-company.com/sheets/" style="width:100%;height:1100px;border:0"></iframe>`
 
 ### Bijwerken
+Elke versie heeft een nummer in `VERSION` (zie `CHANGELOG.md`); het staat onderaan in het beheer, zodat je ziet welke versie online staat. Een nieuwe zip maken: verhoog `VERSION` en draai `python3 tools/make_zip.py`; dat geeft `dist/gfc-tokensheet-v<versie>.zip`. In die zip heet de instellingen-template `api/config.voorbeeld.php`, zodat uploaden je eigen `api/config.php` nooit overschrijft. Bij een nieuwe installatie hernoem je hem naar `config.php`.
+
 Vervang de bestanden door de nieuwe versie (bij GitHub Pages en een gekoppelde Netlify-site: mergen naar `main` is genoeg; op de eigen host `api/config.php` en `api/data/` laten staan). Bestellingen die klanten al hebben opgeslagen blijven werken zolang de element-id's in `js/data.js` hetzelfde blijven.
 
 ### Lettertype

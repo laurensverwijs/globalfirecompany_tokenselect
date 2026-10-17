@@ -382,7 +382,8 @@ switch ($action) {
   case 'ping':
     out(['ok' => true, 'publicCreate' => !empty($CFG['public_create']),
       'admin' => !in_array((string)($CFG['admin_password'] ?? ''), ['', 'wijzig-mij'], true),
-      'retentionMonths' => (int)($CFG['retention_months'] ?? 6)]);
+      'retentionMonths' => (int)($CFG['retention_months'] ?? 6),
+      'version' => trim((string)@file_get_contents(dirname(__DIR__) . '/VERSION'))]);
 
   case 'get':
     if (!valid_code($in['code'] ?? null)) fail('bad_code');
