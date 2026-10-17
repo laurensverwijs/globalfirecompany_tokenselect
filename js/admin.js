@@ -237,6 +237,22 @@
       box.innerHTML = html;
     }, function (e) { b.disabled = false; handleError(e); });
   };
+  $('btn-hash').onclick = function () { var f = $('hash-form'); f.hidden = !f.hidden; if (!f.hidden) f.elements.pw1.focus(); };
+  $('hash-form').onsubmit = function (e) {
+    e.preventDefault();
+    var f = e.target, a = f.elements.pw1.value, b = f.elements.pw2.value;
+    $('hash-error').textContent = ''; $('hash-out').hidden = true;
+    if (a.length < 12) { $('hash-error').textContent = T('hashTooShort'); return; }
+    if (a !== b) { $('hash-error').textContent = T('hashMismatch'); return; }
+    if (a.indexOf("'") >= 0 || a.indexOf('\\') >= 0) { $('hash-error').textContent = T('hashBadChar'); return; }
+    call({ action: 'make_hash', newPassword: a }).then(function (d) {
+      f.elements.pw1.value = ''; f.elements.pw2.value = '';
+      $('hash-line').value = "'admin_password' => '" + d.hash + "',";
+      $('hash-out').hidden = false;
+    }, handleError);
+  };
+  $('hash-copy').onclick = function () { copy($('hash-line').value); };
+  $('hash-line').onfocus = function (ev) { ev.target.select(); };
   $('q').oninput = renderRows;
   $('filter').onchange = renderRows;
   $('new-form').onsubmit = function (e) {

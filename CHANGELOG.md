@@ -2,6 +2,10 @@
 
 Het versienummer staat in `VERSION`, in het beheer onderaan de pagina, en in de naam van de zip (`python3 tools/make_zip.py`).
 
+## 1.0.2 (17 oktober 2026)
+
+- Knop **Wachtwoord-hash maken** in het beheer: typ een nieuw wachtwoord en je krijgt de regel om in `api/config.php` te plakken.
+
 ## 1.0.1 (17 oktober 2026)
 
 - Het beheerwachtwoord in `api/config.php` mag nu een hash zijn (uit `password_hash`), zodat het wachtwoord zelf niet meer leesbaar op de server staat. Een gewoon wachtwoord blijft werken.
