@@ -2,6 +2,10 @@
 
 Het versienummer staat in `VERSION`, in het beheer onderaan de pagina, en in de naam van de zip (`python3 tools/make_zip.py`).
 
+## 1.1.1 (17 oktober 2026)
+
+- Eigen icoontje (favicon) met het GFC-logo in plaats van dat van de website eromheen.
+
 ## 1.1.0 (17 oktober 2026)
 
 - Gebruikers met eigen naam en wachtwoord. Rol **Beheerder**: alles. Rol **Gebruiker**: bestellingen aanmaken, bekijken, status wijzigen en PDF downloaden.
