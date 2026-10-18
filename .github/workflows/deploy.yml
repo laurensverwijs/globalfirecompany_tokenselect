@@ -43,6 +43,15 @@ jobs:
           chmod 600 ~/.ssh/id_deploy
           ssh-keyscan -p "${{ secrets.SSH_PORT }}" -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
+      # Veiligheidscheck: alleen deployen als DEPLOY_PATH echt de map van de app is.
+      # Zonder deze check zou een verkeerd pad (bijv. alleen 'www') door --delete
+      # de rest van de website kunnen wissen.
+      - name: Controleren of DEPLOY_PATH de app-map is
+        run: |
+          ssh -i ~/.ssh/id_deploy -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "test -f '${{ secrets.DEPLOY_PATH }}/api/orders.php'" \
+            || { echo "DEPLOY_PATH wijst niet naar de map van de app (api/orders.php niet gevonden). Niets gedeployd."; exit 1; }
+
       - name: Bestanden naar de server kopiëren
         run: |
           rsync -rltz --delete \
