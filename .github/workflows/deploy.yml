@@ -1,0 +1,71 @@
+name: Deploy naar TransIP
+
+# Zet de app automatisch op de server zodra er iets naar 'main' gaat
+# (bijvoorbeeld als je een pull request merget). Je hoeft dan niets meer
+# te downloaden of te uploaden.
+#
+# Je instellingen, de sleutel en de klantgegevens op de server blijven altijd
+# ongemoeid: api/config.php, api/secret-key.php en api/data/ worden nooit
+# meegestuurd (zie de --exclude-regels hieronder).
+#
+# Eenmalig instellen (zie ook de uitleg in het pull request): zet in GitHub bij
+# Settings -> Secrets and variables -> Actions deze vijf secrets:
+#   SSH_HOST     het SSH-adres van TransIP (bijv. jouwnaam.ssh.transip.email)
+#   SSH_USER     je SSH-gebruikersnaam
+#   SSH_PORT     de SSH-poort (meestal 22)
+#   SSH_KEY      de PRIVATE sleutel (de hele inhoud van het bestand zonder .pub)
+#   DEPLOY_PATH  het pad naar de map van de app op de server
+#                (bijv. /home/jouwnaam/domains/scenariogaming.com/public_html/global-fire-company/tokensheet)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:        # je kunt hem ook met de hand starten vanuit het Actions-tabblad
+
+concurrency:
+  group: deploy-transip
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code ophalen
+        uses: actions/checkout@v4.2.2
+
+      - name: Versienummer in de pagina's zetten
+        run: python3 tools/make_zip.py
+
+      - name: SSH klaarzetten
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -p "${{ secrets.SSH_PORT }}" -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      # Veiligheidscheck: alleen deployen als DEPLOY_PATH echt de map van de app is.
+      # Zonder deze check zou een verkeerd pad (bijv. alleen 'www') door --delete
+      # de rest van de website kunnen wissen.
+      - name: Controleren of DEPLOY_PATH de app-map is
+        run: |
+          ssh -i ~/.ssh/id_deploy -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "test -f '${{ secrets.DEPLOY_PATH }}/api/orders.php'" \
+            || { echo "DEPLOY_PATH wijst niet naar de map van de app (api/orders.php niet gevonden). Niets gedeployd."; exit 1; }
+
+      - name: Bestanden naar de server kopiëren
+        run: |
+          rsync -rltz --delete \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='tools/' \
+            --exclude='dist/' \
+            --exclude='*.md' \
+            --exclude='api/config.php' \
+            --exclude='api/secret-key.php' \
+            --exclude='api/data/' \
+            -e "ssh -i ~/.ssh/id_deploy -p ${{ secrets.SSH_PORT }}" \
+            ./ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/"
+
+      - name: Sleutel opruimen
+        if: always()
+        run: rm -f ~/.ssh/id_deploy
