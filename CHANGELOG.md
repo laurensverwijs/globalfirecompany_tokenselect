@@ -8,6 +8,7 @@ Het versienummer staat in `VERSION`, in het beheer onderaan de pagina, en in de 
 - Op de achterkant krijgen de triagefiches (grijs, rood, geel, groen) de Triage-achterkant en alle andere ronde fiches de GFC-achterkant.
 - Nieuw tabblad **Spelborden**: de parkeerplaats zit er altijd bij, de klant kiest maximaal 2 extra borden. De keuze staat in de bestelling, het beheer, de CSV, de PDF en de akkoord-mail. De server weigert meer dan 2 extra borden.
 - Sheets kunnen een eigen naam hebben (ook in de akkoord-mail).
+- Security review gedaan (geen lek gevonden). Extra: in de CSV-export kan een veld niet meer als Excel-formule worden uitgevoerd.
 
 ## 1.1.2 (17 oktober 2026)
 

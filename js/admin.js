@@ -30,7 +30,7 @@
   }
   // alle spelborden van een order (vaste eerst), als namen
   function boardNames(o) {
-    var items = (DATA.boards && DATA.boards.items) || [], by = {};
+    var items = (DATA.boards && DATA.boards.items) || [], by = Object.create(null);
     items.forEach(function (b) { by[b.id] = b; });
     var nm = function (b) { return b['name_' + lang] || b.name; };
     return items.filter(function (b) { return b.included; }).map(nm)
@@ -221,7 +221,7 @@
       boardNames(o).forEach(function (b) { any = true; rows.push(base.concat([T('boards'), b, 1])); });
       if (!any) rows.push(base.concat(['', '', 0]));
     });
-    var text = '﻿' + rows.map(function (r) { return r.map(function (v) { v = String(v == null ? '' : v); return /[";\n,]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(';'); }).join('\r\n');
+    var text = '﻿' + rows.map(function (r) { return r.map(function (v) { v = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(v)) v = "'" + v; return /[";\n,]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(';'); }).join('\r\n');
     var a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
     a.download = 'gfc-orders-' + new Date().toISOString().slice(0, 10) + '.csv';

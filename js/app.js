@@ -12,7 +12,7 @@
   var SIZE = {}; DATA.sizes.forEach(function (s) { SIZE[s.id] = s; });
   var TOKEN = {}; DATA.tokens.forEach(function (t) { TOKEN[t.id] = t; });
   var SHEET = {}; DATA.sheets.forEach(function (s) { SHEET[s.id] = s; });
-  var BOARDS = (DATA.boards && DATA.boards.items) || [], BOARD = {}; BOARDS.forEach(function (b) { BOARD[b.id] = b; });
+  var BOARDS = (DATA.boards && DATA.boards.items) || [], BOARD = Object.create(null); BOARDS.forEach(function (b) { BOARD[b.id] = b; });
   var MAX_BOARDS = (DATA.boards && DATA.boards.maxExtra) || 0;
 
   var $ = function (id) { return document.getElementById(id); };
@@ -63,7 +63,7 @@
   function sanitizeBoards(arr) {
     var out = [];
     (Array.isArray(arr) ? arr : []).forEach(function (id) {
-      if (BOARD[id] && !BOARD[id].included && out.indexOf(id) < 0 && out.length < MAX_BOARDS) out.push(id);
+      if (typeof id === 'string' && BOARD[id] && !BOARD[id].included && out.indexOf(id) < 0 && out.length < MAX_BOARDS) out.push(id);
     });
     return out;
   }
