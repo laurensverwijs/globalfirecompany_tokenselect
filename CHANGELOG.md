@@ -2,6 +2,10 @@
 
 Het versienummer staat in `VERSION`, in het beheer onderaan de pagina, en in de naam van de zip (`python3 tools/make_zip.py`).
 
+## 1.2.2 (10 november 2026)
+
+- Sheet 1 t/m 4 heten nu Voertuigen 1 t/m 4 (Engels: Vehicles, Duits: Fahrzeuge), ook in het beheer, de PDF en de akkoord-mail.
+
 ## 1.2.1 (10 november 2026)
 
 - Ronde fiches staan groter in de lijst (twee per rij). De knoppen + en ⇉ staan boven het fiche in plaats van eroverheen, en de naam is volledig leesbaar.

@@ -994,7 +994,10 @@ window.GFC_DATA = {
      "h": 32.0,
      "size": "S"
     }
-   ]
+   ],
+   "name_nl": "Voertuigen 1",
+   "name_en": "Vehicles 1",
+   "name_de": "Fahrzeuge 1"
   },
   {
    "id": "sheet2",
@@ -1261,7 +1264,10 @@ window.GFC_DATA = {
      "h": 44.16,
      "size": "XL"
     }
-   ]
+   ],
+   "name_nl": "Voertuigen 2",
+   "name_en": "Vehicles 2",
+   "name_de": "Fahrzeuge 2"
   },
   {
    "id": "sheet3",
@@ -1437,7 +1443,10 @@ window.GFC_DATA = {
      "h": 38.0,
      "size": "L"
     }
-   ]
+   ],
+   "name_nl": "Voertuigen 3",
+   "name_en": "Vehicles 3",
+   "name_de": "Fahrzeuge 3"
   },
   {
    "id": "sheet4",
@@ -1598,7 +1607,10 @@ window.GFC_DATA = {
      "h": 38.0,
      "size": "L"
     }
-   ]
+   ],
+   "name_nl": "Voertuigen 4",
+   "name_en": "Vehicles 4",
+   "name_de": "Fahrzeuge 4"
   },
   {
    "id": "round1",

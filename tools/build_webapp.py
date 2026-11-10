@@ -117,13 +117,21 @@ for n_i, ab in enumerate(fronts):
         open(os.path.join(A, 'sheets', 'sheet%d_%s.svg' % (n_i + 1, suffix)), 'w').write(
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %s %s" preserveAspectRatio="none">%s</svg>' % (fmt(W), fmt(H), c.svg_body(prefix='m%d' % n_i)))
     allowed = sorted(set(s['size'] for s in slots), key=[z['id'] for z in sizes].index)
-    sheets.append(dict(id='sheet%d' % (n_i + 1), name='Sheet %d' % (n_i + 1), artboard=ab, w=round(W * PT2MM, 2), h=round(H * PT2MM, 2),
+    sheets.append(dict(id='sheet%d' % (n_i + 1), name='Sheet %d' % (n_i + 1), name_nl='Voertuigen %d' % (n_i + 1), name_en='Vehicles %d' % (n_i + 1), name_de='Fahrzeuge %d' % (n_i + 1), artboard=ab, w=round(W * PT2MM, 2), h=round(H * PT2MM, 2),
                        bg='assets/sheets/sheet%d_bg.svg' % (n_i + 1), marks='assets/sheets/sheet%d_marks.svg' % (n_i + 1),
                        sizes=allowed, slots=slots))
 
 for s in sizes: s.pop('_w'); s.pop('_h')
 tokens.sort(key=lambda t: ([z['id'] for z in sizes].index(t['size']), t['name']))
 data = dict(sizes=sizes, tokens=tokens, sheets=sheets)
+# Ronde fiches (tools/build_round.py) en spelborden (tools/build_boards.py) uit de bestaande data.js behouden.
+try:
+    old = json.loads(re.search(r'window\.GFC_DATA = (\{.*\});', open(os.path.join(app, 'js', 'data.js'), encoding='utf-8').read(), re.S).group(1))
+    have = lambda key: {x['id'] for x in data[key]}
+    for key in ('sizes', 'tokens', 'sheets'): data[key] += [x for x in old.get(key, []) if x['id'] not in have(key)]
+    if 'boards' in old: data['boards'] = old['boards']
+except (OSError, AttributeError, ValueError):
+    pass
 os.makedirs(os.path.join(app, 'js'), exist_ok=True)
 with open(os.path.join(app, 'js', 'data.js'), 'w') as fh:
     fh.write('/* Gegenereerd uit %s door tools/build_webapp.py. Namen en mirrorBack mag je met de hand aanpassen. */\n' % os.path.basename(src))
