@@ -25,8 +25,16 @@
     return m[2] ? base + ' ' + (L.typeWord || 'type') + ' ' + m[2] : base;
   }
   function sheetName(id) {
-    for (var i = 0; i < DATA.sheets.length; i++) if (DATA.sheets[i].id === id) return T('sheet', { n: i + 1 });
+    for (var i = 0; i < DATA.sheets.length; i++) if (DATA.sheets[i].id === id) return DATA.sheets[i]['name_' + lang] || T('sheet', { n: i + 1 });
     return id;
+  }
+  // alle spelborden van een order (vaste eerst), als namen
+  function boardNames(o) {
+    var items = (DATA.boards && DATA.boards.items) || [], by = {};
+    items.forEach(function (b) { by[b.id] = b; });
+    var nm = function (b) { return b['name_' + lang] || b.name; };
+    return items.filter(function (b) { return b.included; }).map(nm)
+      .concat((o.boards || []).filter(function (id) { return by[id] && !by[id].included; }).map(function (id) { return nm(by[id]); }));
   }
   function fmtDate(iso) {
     try { return new Date(iso).toLocaleString(I18N[lang]._htmlLang, { dateStyle: 'medium', timeStyle: 'short' }); } catch (e) { return iso; }
@@ -166,7 +174,7 @@
     btn.disabled = true; btn.textContent = T('pdfBusy');
     fetch(API + '?action=get&code=' + encodeURIComponent(code), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
       if (!d.ok) throw d;
-      return window.GFC_PDF.download(d.order, { T: T, tokenName: tokenName, sheetName: sheetName, date: fmtDate });
+      return window.GFC_PDF.download(d.order, { T: T, tokenName: tokenName, sheetName: sheetName, boards: boardNames, date: fmtDate });
     }).then(function () {
       btn.disabled = false; btn.textContent = T('pdfDownload');
     }, function (e) {
@@ -187,6 +195,9 @@
       html += '<div><h3>' + esc(sheetName(sid)) + '</h3><ul class="counts">' +
         keys.map(function (k) { return '<li><span>' + esc(tokenName(k)) + '</span><b>' + tally[k] + '×</b></li>'; }).join('') + '</ul></div>';
     });
+    var boards = boardNames(o);
+    if (boards.length) html += '<div><h3>' + esc(T('boards')) + '</h3><ul class="counts">' +
+      boards.map(function (b) { return '<li><span>' + esc(b) + '</span><b>1×</b></li>'; }).join('') + '</ul></div>';
     if (o.createdBy && o.createdBy !== 'customer') html += '<div><h3>' + esc(T('adminHistory')) + '</h3><ul class="counts">' +
       [{ at: o.createdAt, by: o.createdBy, what: 'created' }].concat((o.log || []).filter(function (l) { return l.what !== 'created'; })).map(function (l) {
         var what = l.what.indexOf('status:') === 0 ? T('status_' + l.what.slice(7)) : T('log_' + l.what);
@@ -207,6 +218,7 @@
       Object.keys(o.totals || {}).forEach(function (sid) {
         Object.keys(o.totals[sid]).forEach(function (k) { any = true; rows.push(base.concat([sheetName(sid), tokenName(k), o.totals[sid][k]])); });
       });
+      boardNames(o).forEach(function (b) { any = true; rows.push(base.concat([T('boards'), b, 1])); });
       if (!any) rows.push(base.concat(['', '', 0]));
     });
     var text = '﻿' + rows.map(function (r) { return r.map(function (v) { v = String(v == null ? '' : v); return /[";\n,]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(';'); }).join('\r\n');

@@ -12,6 +12,8 @@
   var SIZE = {}; DATA.sizes.forEach(function (s) { SIZE[s.id] = s; });
   var TOKEN = {}; DATA.tokens.forEach(function (t) { TOKEN[t.id] = t; });
   var SHEET = {}; DATA.sheets.forEach(function (s) { SHEET[s.id] = s; });
+  var BOARDS = (DATA.boards && DATA.boards.items) || [], BOARD = {}; BOARDS.forEach(function (b) { BOARD[b.id] = b; });
+  var MAX_BOARDS = (DATA.boards && DATA.boards.maxExtra) || 0;
 
   var $ = function (id) { return document.getElementById(id); };
   var el = function (tag, cls, html) {
@@ -22,7 +24,11 @@
   };
   var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var pct = function (v, total) { return (v / total * 100) + '%'; };
-  var mm = function (s) { return s.w + ' × ' + s.h + ' mm'; };
+  var mm = function (s) { return s.round ? 'Ø ' + s.w + ' mm' : s.w + ' × ' + s.h + ' mm'; };
+  // Afbeelding van een element: op de achterkant de eigen achterkant als die er is (ronde fiches).
+  var art = function (t, back) { return back && t.back ? t.back : t.file; };
+  // Ronde fiches hebben afloop rondom: de afbeelding is groter dan het vak (bleed in mm aan elke kant).
+  var bleedOf = function (sizeId) { return (SIZE[sizeId] && SIZE[sizeId].bleed) || 0; };
   /* ---------- taal ---------- */
   var I18N = window.GFC_I18N, LANGS = Object.keys(I18N), LANG_KEY = 'gfc-sheet-samensteller-lang';
   function pickLang() {
@@ -41,7 +47,8 @@
   var sizeT = function (id) { return (I18N[lang].sizes && I18N[lang].sizes[id]) || { label: SIZE[id].label, adj: SIZE[id].adj || SIZE[id].label.toLowerCase() }; };
   var label = function (id) { return sizeT(id).label; };
   var adj = function (id) { return sizeT(id).adj; };
-  var sheetName = function (s) { return T('sheet', { n: DATA.sheets.indexOf(s) + 1 }); };
+  var sheetName = function (s) { return s['name_' + lang] || T('sheet', { n: DATA.sheets.indexOf(s) + 1 }); };
+  var boardName = function (b) { return b['name_' + lang] || b.name; };
   var tokenName = function (t) {
     if (t['name_' + lang]) return t['name_' + lang];
     var L = I18N[lang], m = /^(.*?)(?: type (\d+))?$/.exec(t.name);
@@ -50,7 +57,19 @@
   };
 
   /* ---------- state ---------- */
-  var state = { current: DATA.sheets[0].id, back: false, fill: {} };
+  var state = { current: DATA.sheets[0].id, back: false, fill: {}, boards: [], view: 'sheet' };
+
+  /* Spelborden: alleen bekende, niet-vaste borden, zonder dubbele, hooguit MAX_BOARDS. */
+  function sanitizeBoards(arr) {
+    var out = [];
+    (Array.isArray(arr) ? arr : []).forEach(function (id) {
+      if (BOARD[id] && !BOARD[id].included && out.indexOf(id) < 0 && out.length < MAX_BOARDS) out.push(id);
+    });
+    return out;
+  }
+  function allBoards() {
+    return BOARDS.filter(function (b) { return b.included; }).concat(state.boards.map(function (id) { return BOARD[id]; }));
+  }
 
   function emptyFill(sheet) { return sheet.slots.map(function () { return null; }); }
 
@@ -72,13 +91,14 @@
       if (saved && saved.sheets) {
         Object.keys(saved.sheets).forEach(function (id) { if (SHEET[id]) state.fill[id] = sanitize(id, saved.sheets[id]); });
         if (SHEET[saved.current]) state.current = saved.current;
+        state.boards = sanitizeBoards(saved.boards);
       }
     } catch (e) { /* geen opslag beschikbaar: gewoon leeg beginnen */ }
   }
 
   function persist() {
     if (order) { scheduleSave(); return; }
-    try { localStorage.setItem(STORE_KEY, JSON.stringify({ current: state.current, sheets: state.fill })); } catch (e) { }
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ current: state.current, sheets: state.fill, boards: state.boards })); } catch (e) { }
   }
 
   function sheet() { return SHEET[state.current]; }
@@ -141,12 +161,52 @@
       Object.keys(cap).forEach(function (k) { used += cap[k].used; total += cap[k].total; });
       var b = el('button', 'tab');
       b.setAttribute('role', 'tab');
-      b.setAttribute('aria-selected', s.id === state.current ? 'true' : 'false');
       b.innerHTML = '<span class="t-name">' + esc(sheetName(s)) + '</span>' +
         '<span class="t-meta">' + s.sizes.map(function (z) { return esc(label(z)); }).join(' + ') + '</span>' +
         '<span class="t-fill' + (used === total ? ' full' : '') + '">' + used + '/' + total + '</span>';
-      b.onclick = function () { state.current = s.id; if (!order) persist(); render(); };
+      b.setAttribute('aria-selected', state.view === 'sheet' && s.id === state.current ? 'true' : 'false');
+      b.onclick = function () { state.current = s.id; state.view = 'sheet'; if (!order) persist(); render(); };
       tabs.appendChild(b);
+    });
+    if (!BOARDS.length) return;
+    var b = el('button', 'tab tab-boards');
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-selected', state.view === 'boards' ? 'true' : 'false');
+    b.innerHTML = '<span class="t-name">' + esc(T('boards')) + '</span>' +
+      '<span class="t-meta">' + esc(T('boardsMeta', { n: MAX_BOARDS })) + '</span>' +
+      '<span class="t-fill">' + allBoards().length + '</span>';
+    b.onclick = function () { state.view = 'boards'; render(); };
+    tabs.appendChild(b);
+  }
+
+  function toggleBoard(id) {
+    if (locked()) return;
+    var i = state.boards.indexOf(id);
+    if (i >= 0) state.boards.splice(i, 1);
+    else if (state.boards.length >= MAX_BOARDS) { toast(T('toastBoardsMax', { n: MAX_BOARDS }), true); return; }
+    else state.boards.push(id);
+    commit();
+  }
+
+  function renderBoards() {
+    document.body.classList.toggle('view-boards', state.view === 'boards');
+    var box = $('boards-view'); if (!box) return;
+    box.hidden = state.view !== 'boards';
+    if (state.view !== 'boards') return;
+    $('boards-intro').textContent = T('boardsIntro', { n: MAX_BOARDS });
+    $('boards-count').textContent = T('boardsChosen', { n: state.boards.length, max: MAX_BOARDS });
+    var grid = $('boards-grid'); grid.innerHTML = '';
+    BOARDS.forEach(function (bd) {
+      var on = bd.included || state.boards.indexOf(bd.id) >= 0, nm = boardName(bd);
+      var c = el('button', 'board' + (on ? ' on' : '') + (bd.included ? ' fixed' : ''));
+      c.type = 'button';
+      c.setAttribute('aria-pressed', on ? 'true' : 'false');
+      c.disabled = !!bd.included || readOnly();
+      c.innerHTML = '<span class="b-img"><img src="' + esc(bd.file) + '" alt="" loading="lazy"></span>' +
+        '<span class="b-meta"><span class="b-name">' + esc(nm) + '</span>' +
+        '<span class="b-state">' + esc(T(bd.included ? 'boardIncluded' : on ? 'boardChosen' : 'boardChoose')) + '</span></span>';
+      if (!bd.included) c.onclick = function () { toggleBoard(bd.id); };
+      grid.appendChild(c);
     });
   }
 
@@ -158,7 +218,7 @@
       var g = el('div', 'size-group');
       g.innerHTML = '<h3>' + esc(label(z)) + ' <small>' + mm(SIZE[z]) + '</small></h3>';
       var wide = SIZE[z].w > 60;
-      var grid = el('div', 'cards' + (wide ? ' wide' : ''));
+      var grid = el('div', 'cards' + (wide ? ' wide' : '') + (SIZE[z].round ? ' round' : ''));
       var full = cap[z].used >= cap[z].total;
       DATA.tokens.filter(function (t) { return t.size === z; }).forEach(function (t) {
         var count = f.filter(function (x) { return x === t.id; }).length;
@@ -192,10 +252,16 @@
       d.dataset.index = i;
       d.style.left = pct(slot.x, s.w); d.style.top = pct(slot.y, s.h);
       d.style.width = pct(slot.w, s.w); d.style.height = pct(slot.h, s.h);
-      d.title = SIZE[slot.size].label + ' · ' + mm(SIZE[slot.size]);
+      d.title = label(slot.size) + ' · ' + mm(SIZE[slot.size]);
+      if (SIZE[slot.size].round) d.classList.add('round');
       if (f[i]) {
         var t = TOKEN[f[i]];
-        var img = el('img'); img.src = t.file; img.alt = tokenName(t); img.draggable = false;
+        var img = el('img'); img.src = art(t, state.back); img.alt = tokenName(t); img.draggable = false;
+        var bl = bleedOf(slot.size);
+        if (bl) {
+          img.style.left = img.style.top = pct(-bl, slot.w);
+          img.style.width = img.style.height = pct(slot.w + 2 * bl, slot.w);
+        }
         if (state.back && !t.mirrorBack) img.className = 'flip';
         d.appendChild(img);
         d.title = tokenName(t);
@@ -241,9 +307,15 @@
       var li = el('li', '', '<span>' + esc(sheetName(sh)) + '</span><b>' + used + ' / ' + sh.slots.length + '</b>');
       order.appendChild(li);
     });
+    if (BOARDS.length) order.appendChild(boardsLine());
   }
 
-  function render() { renderTabs(); renderLibrary(); renderSheet(); renderSummary(); renderOrder(); }
+  function boardsLine() {
+    var list = allBoards();
+    return el('li', 'boards-line', '<span>' + esc(T('boards')) + '<small>' + esc(list.map(boardName).join(', ')) + '</small></span><b>' + list.length + '</b>');
+  }
+
+  function render() { renderTabs(); renderLibrary(); renderSheet(); renderSummary(); renderBoards(); renderOrder(); }
 
   /* ---------- drag & drop (pointer events: muis én touch) ---------- */
   var drag = null;
@@ -263,9 +335,10 @@
     var rect = $('sheet').getBoundingClientRect();
     var scale = rect.width / s.w;
     var allowed = s.sizes.indexOf(t.size) >= 0;
-    var g = el('div', 'drag-ghost');
-    g.style.width = Math.max(48, size.w * scale) + 'px';
-    g.style.height = Math.max(38, size.h * scale) + 'px';
+    var g = el('div', 'drag-ghost' + (size.round ? ' round' : ''));
+    var bl = size.bleed || 0;
+    g.style.width = Math.max(48, (size.w + 2 * bl) * scale) + 'px';
+    g.style.height = Math.max(38, (size.h + 2 * bl) * scale) + 'px';
     g.innerHTML = '<img src="' + esc(t.file) + '" alt="">';
     document.body.appendChild(g);
     drag.ghost = g; drag.started = true; drag.allowed = allowed;
@@ -359,7 +432,7 @@
   }
 
   function save() {
-    var out = { app: 'gfc-sheet-samensteller', version: 1, savedAt: new Date().toISOString(), sheets: {} };
+    var out = { app: 'gfc-sheet-samensteller', version: 1, savedAt: new Date().toISOString(), sheets: {}, boards: state.boards };
     DATA.sheets.forEach(function (s) {
       out.sheets[s.id] = {
         name: s.name,
@@ -383,6 +456,7 @@
           var v = data.sheets[id];
           state.fill[id] = sanitize(id, Array.isArray(v) ? v : v.slots);
         });
+        if (data.boards) state.boards = sanitizeBoards(data.boards);
         commit();
         toast(T('toastOpened'));
       } catch (e) { toast(T('toastOpenError'), true); }
@@ -395,6 +469,7 @@
     var root = $('print-root'); root.innerHTML = '';
     var first = SHEET[sheetIds[0]];
     $('page-size').textContent = '@page { size: ' + first.w + 'mm ' + first.h + 'mm; margin: 0; }';
+    var box = function (slot, bl) { return 'left:' + (slot.x - bl) + 'mm;top:' + (slot.y - bl) + 'mm;width:' + (slot.w + 2 * bl) + 'mm;height:' + (slot.h + 2 * bl) + 'mm'; };
     sheetIds.forEach(function (id) {
       var s = SHEET[id], f = state.fill[id];
       (withBack ? [false, true] : [false]).forEach(function (back) {
@@ -406,14 +481,14 @@
         s.slots.forEach(function (slot, i) {
           if (f[i]) {
             var t = TOKEN[f[i]], im = el('img');
-            im.src = t.file;
-            im.style.cssText = 'left:' + slot.x + 'mm;top:' + slot.y + 'mm;width:' + slot.w + 'mm;height:' + slot.h + 'mm';
+            im.src = art(t, back);
+            im.style.cssText = box(slot, bleedOf(slot.size));
             if (back && !t.mirrorBack) im.className = 'flip';
             inner.appendChild(im);
           }
           if (withCut) {
-            var c = el('div', 'cut');
-            c.style.cssText = 'left:' + slot.x + 'mm;top:' + slot.y + 'mm;width:' + slot.w + 'mm;height:' + slot.h + 'mm';
+            var c = el('div', 'cut' + (SIZE[slot.size].round ? ' round' : ''));
+            c.style.cssText = box(slot, 0);
             inner.appendChild(c);
           }
         });
@@ -495,7 +570,8 @@
   }
   function errText(e) {
     var map = { not_found: 'errNotFound', bad_code: 'errBadCode', locked: 'toastLocked', rate_limited: 'errRateLimited',
-      create_disabled: 'errCreateDisabled', customer_required: 'errCustomer', privacy_required: 'errPrivacy', empty_order: 'toastNothing' };
+      create_disabled: 'errCreateDisabled', customer_required: 'errCustomer', privacy_required: 'errPrivacy', empty_order: 'toastNothing',
+      too_many_boards: 'errBoards' };
     return T(map[e && e.error] || 'errOffline');
   }
 
@@ -527,7 +603,7 @@
     if (saving) { clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 400); return Promise.resolve(); }
     clearTimeout(saveTimer);
     saving = true; dirty = false; renderOrderState();
-    var body = { action: 'save', code: order.code, sheets: payloadSheets(), lang: lang };
+    var body = { action: 'save', code: order.code, sheets: payloadSheets(), boards: state.boards, lang: lang };
     if (extra) Object.keys(extra).forEach(function (k) { body[k] = extra[k]; });
     return apiPost(body).then(function (d) {
       saving = false; saveFailed = false; order.status = d.order.status; order.customer = d.order.customer;
@@ -543,6 +619,7 @@
   function applyOrder(o) {
     order = o;
     DATA.sheets.forEach(function (s) { state.fill[s.id] = sanitize(s.id, o.sheets && o.sheets[s.id]); });
+    state.boards = sanitizeBoards(o.boards);
     remember(o);
     if (history.replaceState && !new RegExp('[?&]order=' + o.code + '(&|$)').test(location.search)) history.replaceState(null, '', orderUrl(o.code));
     render();
@@ -618,6 +695,7 @@
       var used = state.fill[s.id].filter(Boolean).length;
       if (used) ul.appendChild(el('li', '', '<span>' + esc(sheetName(s)) + '</span><b>' + used + ' / ' + s.slots.length + '</b>'));
     });
+    if (BOARDS.length) ul.appendChild(boardsLine());
     f.elements.privacy.checked = false;
     $('privacy-text').textContent = T('privacyText', { months: (server && server.retentionMonths) || 6 });
     $('submit-error').textContent = '';
@@ -652,7 +730,7 @@
       if (!f.elements.privacy.checked) { $('submit-error').textContent = T('errPrivacy'); f.elements.privacy.focus(); return; }
       var go = $('submit-go'); go.disabled = true;
       clearTimeout(saveTimer);
-      apiPost({ action: 'submit', code: order.code, sheets: payloadSheets(), customer: c, lang: lang, privacy: true }).then(function (d) {
+      apiPost({ action: 'submit', code: order.code, sheets: payloadSheets(), boards: state.boards, customer: c, lang: lang, privacy: true }).then(function (d) {
         go.disabled = false; dirty = false; saveFailed = false;
         $('submit-dialog').close();
         applyOrder(d.order);

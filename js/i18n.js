@@ -6,6 +6,10 @@
 window.GFC_I18N = {
   nl: {
     _label: 'NL', _name: 'Nederlands', _htmlLang: 'nl',
+    boards: 'Spelborden', boardsMeta: 'Parkeerplaats + max. {n}', boardsTitle: 'Spelborden kiezen',
+    boardsIntro: 'De parkeerplaats zit er altijd bij. Kies daarnaast maximaal {n} borden.', boardsChosen: '{n} van {max} extra borden gekozen',
+    boardIncluded: 'Altijd inbegrepen', boardChosen: 'Gekozen', boardChoose: 'Kiezen',
+    toastBoardsMax: 'U kunt maximaal {n} extra borden kiezen. Haal er eerst een weg.', errBoards: 'Er zijn te veel spelborden gekozen.',
     docTitle: 'Sheet samensteller · Global Fire Company',
     appTitle: 'Sheet samensteller',
     sheet: 'Sheet {n}',
@@ -90,11 +94,15 @@ window.GFC_I18N = {
       'Truck Service': 'Bergingswagen', 'Rescue Helicopter': 'Traumahelikopter' }, typeWord: 'type',
     sizes: {
       S: { label: 'Klein', adj: 'kleine' }, M: { label: 'Middel', adj: 'middelgrote' },
-      L: { label: 'Groot', adj: 'grote' }, XL: { label: 'Extra groot', adj: 'extra grote' }
+      L: { label: 'Groot', adj: 'grote' }, XL: { label: 'Extra groot', adj: 'extra grote' }, R: { label: 'Rond', adj: 'ronde' }
     }
   },
   en: {
     _label: 'EN', _name: 'English', _htmlLang: 'en',
+    boards: 'Game boards', boardsMeta: 'Car park + max. {n}', boardsTitle: 'Choose game boards',
+    boardsIntro: 'The car park is always included. Choose up to {n} more boards.', boardsChosen: '{n} of {max} extra boards chosen',
+    boardIncluded: 'Always included', boardChosen: 'Chosen', boardChoose: 'Choose',
+    toastBoardsMax: 'You can choose up to {n} extra boards. Remove one first.', errBoards: 'Too many game boards have been chosen.',
     docTitle: 'Sheet Builder · Global Fire Company',
     appTitle: 'Sheet builder',
     sheet: 'Sheet {n}',
@@ -176,11 +184,15 @@ window.GFC_I18N = {
     adminOffline: 'The server is not responding. The overview only works on a host with PHP, where api/orders.php is installed.',
     sizes: {
       S: { label: 'Small', adj: 'small' }, M: { label: 'Medium', adj: 'medium' },
-      L: { label: 'Large', adj: 'large' }, XL: { label: 'Extra large', adj: 'extra large' }
+      L: { label: 'Large', adj: 'large' }, XL: { label: 'Extra large', adj: 'extra large' }, R: { label: 'Round', adj: 'round' }
     }
   },
   de: {
     _label: 'DE', _name: 'Deutsch', _htmlLang: 'de',
+    boards: 'Spielpläne', boardsMeta: 'Parkplatz + max. {n}', boardsTitle: 'Spielpläne auswählen',
+    boardsIntro: 'Der Parkplatz ist immer dabei. Wählen Sie zusätzlich bis zu {n} Spielpläne.', boardsChosen: '{n} von {max} zusätzlichen Spielplänen gewählt',
+    boardIncluded: 'Immer enthalten', boardChosen: 'Gewählt', boardChoose: 'Auswählen',
+    toastBoardsMax: 'Sie können höchstens {n} zusätzliche Spielpläne wählen. Entfernen Sie zuerst einen.', errBoards: 'Es wurden zu viele Spielpläne gewählt.',
     docTitle: 'Bogen-Konfigurator · Global Fire Company',
     appTitle: 'Bogen-Konfigurator',
     sheet: 'Bogen {n}',
@@ -265,7 +277,7 @@ window.GFC_I18N = {
       'Truck Service': 'Abschleppwagen', 'Rescue Helicopter': 'Rettungshubschrauber' }, typeWord: 'Typ',
     sizes: {
       S: { label: 'Klein', adj: 'kleinen' }, M: { label: 'Mittel', adj: 'mittleren' },
-      L: { label: 'Groß', adj: 'großen' }, XL: { label: 'Extra groß', adj: 'extra großen' }
+      L: { label: 'Groß', adj: 'großen' }, XL: { label: 'Extra groß', adj: 'extra großen' }, R: { label: 'Rund', adj: 'runden' }
     }
   }
 };

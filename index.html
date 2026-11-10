@@ -2,14 +2,14 @@
 <html lang="nl">
 <head>
 <meta charset="utf-8">
-<meta name="version" content="1.1.2">
+<meta name="version" content="1.2.0">
 <link rel="icon" href="favicon.ico" sizes="48x48">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#2b3b6a">
 <title>Sheet samensteller · Global Fire Company</title>
-<link rel="stylesheet" href="css/app.css?v=1.1.2">
+<link rel="stylesheet" href="css/app.css?v=1.2.0">
 <style id="page-size"></style>
 </head>
 <body>
@@ -74,6 +74,17 @@
       <h2 data-i18n="order">Bestelling</h2>
       <ul class="order" id="order"></ul>
     </aside>
+
+    <section class="boards-view" id="boards-view" aria-labelledby="boards-title" hidden>
+      <div class="stage-head">
+        <div>
+          <h1 id="boards-title" data-i18n="boardsTitle">Spelborden kiezen</h1>
+          <p class="lead"><span class="sq" aria-hidden="true"></span><span id="boards-intro"></span></p>
+        </div>
+        <p class="boards-count" id="boards-count" role="status"></p>
+      </div>
+      <div class="boards-grid" id="boards-grid"></div>
+    </section>
   </main>
 </div>
 
@@ -148,8 +159,8 @@
 
 <div id="print-root" aria-hidden="true"></div>
 
-<script src="js/data.js?v=1.1.2"></script>
-<script src="js/i18n.js?v=1.1.2"></script>
-<script src="js/app.js?v=1.1.2"></script>
+<script src="js/data.js?v=1.2.0"></script>
+<script src="js/i18n.js?v=1.2.0"></script>
+<script src="js/app.js?v=1.2.0"></script>
 </body>
 </html>
