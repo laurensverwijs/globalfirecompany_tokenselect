@@ -181,7 +181,7 @@ function with_order(string $code, callable $fn): array {
 
 function public_view(array $o): array {
   return ['code' => $o['code'], 'status' => $o['status'], 'customer' => $o['customer'], 'sheets' => $o['sheets'],
-    'lang' => $o['lang'] ?? '', 'createdAt' => $o['createdAt'], 'updatedAt' => $o['updatedAt'], 'submittedAt' => $o['submittedAt'] ?? null];
+    'boards' => array_values((array)($o['boards'] ?? [])), 'lang' => $o['lang'] ?? '', 'createdAt' => $o['createdAt'], 'updatedAt' => $o['updatedAt'], 'submittedAt' => $o['submittedAt'] ?? null];
 }
 
 function create_order(array $customer, string $lang, string $by): array {
@@ -336,29 +336,67 @@ function app_base(): string {
 const MAIL_TEXT = [
   'nl' => ['subject' => 'Akkoord op bestelling {code}', 'intro' => 'De klant heeft akkoord gegeven op een bestelling. De bestelling is nu vergrendeld.',
     'pdf' => 'Order openen en PDF downloaden (inloggen met het beheerwachtwoord):', 'view' => 'Bekijken zoals de klant hem ziet:',
-    'code' => 'Ordercode', 'name' => 'Naam', 'company' => 'Organisatie', 'email' => 'E-mail', 'phone' => 'Telefoon', 'reference' => 'Referentie', 'notes' => 'Opmerkingen', 'sheet' => 'Sheet'],
+    'code' => 'Ordercode', 'name' => 'Naam', 'company' => 'Organisatie', 'email' => 'E-mail', 'phone' => 'Telefoon', 'reference' => 'Referentie', 'notes' => 'Opmerkingen', 'sheet' => 'Sheet', 'boards' => 'Spelborden'],
   'en' => ['subject' => 'Order {code} approved', 'intro' => 'The customer has approved an order. The order is now locked.',
     'pdf' => 'Open the order and download the PDF (log in with the admin password):', 'view' => 'View it as the customer sees it:',
-    'code' => 'Order code', 'name' => 'Name', 'company' => 'Organisation', 'email' => 'Email', 'phone' => 'Phone', 'reference' => 'Reference', 'notes' => 'Notes', 'sheet' => 'Sheet'],
+    'code' => 'Order code', 'name' => 'Name', 'company' => 'Organisation', 'email' => 'Email', 'phone' => 'Phone', 'reference' => 'Reference', 'notes' => 'Notes', 'sheet' => 'Sheet', 'boards' => 'Game boards'],
   'de' => ['subject' => 'Bestellung {code} freigegeben', 'intro' => 'Der Kunde hat eine Bestellung freigegeben. Die Bestellung ist jetzt gesperrt.',
     'pdf' => 'Bestellung öffnen und PDF herunterladen (Anmeldung mit dem Verwaltungspasswort):', 'view' => 'Ansicht wie beim Kunden:',
-    'code' => 'Bestellcode', 'name' => 'Name', 'company' => 'Organisation', 'email' => 'E-Mail', 'phone' => 'Telefon', 'reference' => 'Referenz', 'notes' => 'Anmerkungen', 'sheet' => 'Bogen'],
+    'code' => 'Bestellcode', 'name' => 'Name', 'company' => 'Organisation', 'email' => 'E-Mail', 'phone' => 'Telefon', 'reference' => 'Referenz', 'notes' => 'Anmerkungen', 'sheet' => 'Bogen', 'boards' => 'Spielpläne'],
 ];
 
-/* Naam van een element zoals in de app (js/data.js); valt terug op de id ("Bus_Size_B_Type_1" → "Bus Type 1"). */
-function token_label(string $id, string $lang): string {
-  static $names = null;
-  if ($names === null) {
-    $names = [];
+/* Gegevens van de app (js/data.js): elementen, sheets en spelborden. Eén keer per verzoek ingelezen. */
+function app_data(): array {
+  static $data = null;
+  if ($data === null) {
+    $data = [];
     $js = @file_get_contents(dirname(__DIR__) . '/js/data.js');
     if ($js !== false && ($a = strpos($js, '{')) !== false && ($b = strrpos($js, '}')) !== false) {
-      $data = json_decode(substr($js, $a, $b - $a + 1), true);
-      foreach (($data['tokens'] ?? []) as $t) if (isset($t['id'], $t['name'])) $names[$t['id']] = $t;
+      $d = json_decode(substr($js, $a, $b - $a + 1), true);
+      if (is_array($d)) $data = $d;
     }
   }
-  $t = $names[$id] ?? null;
-  if ($t) return (string)($t['name_' . $lang] ?? $t['name']);
+  return $data;
+}
+function by_id(array $list): array { $out = []; foreach ($list as $x) if (isset($x['id'])) $out[$x['id']] = $x; return $out; }
+function name_in(array $x, string $lang): string { return (string)($x['name_' . $lang] ?? $x['name'] ?? $x['id']); }
+
+/* Naam van een element zoals in de app; valt terug op de id ("Bus_Size_B_Type_1" → "Bus Type 1"). */
+function token_label(string $id, string $lang): string {
+  static $names = null;
+  if ($names === null) $names = by_id(app_data()['tokens'] ?? []);
+  if (isset($names[$id])) return name_in($names[$id], $lang);
   return trim(preg_replace('/\s+/', ' ', str_replace('_', ' ', preg_replace('/_Size_[A-Z]/', '', $id))));
+}
+
+/* Naam van een sheet: eigen naam uit data.js ("Ronde fiches"), anders "Sheet 3". */
+function sheet_label(string $id, string $lang): string {
+  $s = by_id(app_data()['sheets'] ?? [])[$id] ?? null;
+  if ($s && isset($s['name_' . $lang])) return (string)$s['name_' . $lang];
+  return (MAIL_TEXT[$lang]['sheet'] ?? 'Sheet') . ' ' . preg_replace('/\D+/', '', $id);
+}
+
+/* Spelborden: alleen ids uit data.js; borden die altijd meegaan worden niet opgeslagen; max 'maxExtra'. */
+function board_config(): array {
+  $b = app_data()['boards'] ?? [];
+  return ['max' => (int)($b['maxExtra'] ?? 0), 'items' => by_id(is_array($b['items'] ?? null) ? $b['items'] : [])];
+}
+function clean_boards($v): array {
+  $cfg = board_config(); $out = [];
+  if (!is_array($v)) return $out;
+  foreach (array_slice(array_values($v), 0, 50) as $id) {
+    if (!is_string($id) || !isset($cfg['items'][$id]) || !empty($cfg['items'][$id]['included']) || in_array($id, $out, true)) continue;
+    $out[] = $id;
+  }
+  if (count($out) > $cfg['max']) fail('too_many_boards', 422);
+  return $out;
+}
+/* Alle borden van een order, de vaste eerst, als namen. */
+function board_labels(array $o, string $lang): array {
+  $cfg = board_config(); $out = [];
+  foreach ($cfg['items'] as $id => $b) if (!empty($b['included'])) $out[] = name_in($b, $lang);
+  foreach ((array)($o['boards'] ?? []) as $id) if (isset($cfg['items'][$id])) $out[] = name_in($cfg['items'][$id], $lang);
+  return $out;
 }
 
 function mail_header_safe(string $v): string { return trim(preg_replace('/[\r\n]+/', ' ', $v)); }
@@ -397,10 +435,12 @@ function mail_body(array $o, string $lang, string $base, string $prefix = ''): a
   foreach ($o['sheets'] as $id => $slots) {
     $tally = array_count_values(array_filter($slots, 'is_string'));
     if (!$tally) continue;
-    $lines[] = $L['sheet'] . ' ' . preg_replace('/\D+/', '', $id) . ' (' . array_sum($tally) . '/' . count($slots) . ')';
+    $lines[] = sheet_label((string)$id, $lang) . ' (' . array_sum($tally) . '/' . count($slots) . ')';
     arsort($tally);
     foreach ($tally as $t => $n) $lines[] = '  ' . $n . 'x ' . token_label((string)$t, $lang);
   }
+  $boards = board_labels($o, $lang);
+  if ($boards) { $lines[] = ''; $lines[] = $L['boards'] . ': ' . implode(', ', $boards); }
   if ($base !== '') { $lines[] = ''; $lines[] = $L['view']; $lines[] = $base . '/?order=' . $o['code']; }
   $who = $c['company'] !== '' ? $c['company'] : $c['name'];
   if ($prefix !== '') array_unshift($lines, $prefix, '');
@@ -505,6 +545,7 @@ switch ($action) {
     $o = with_order($in['code'], function (array $o) use ($in, $action) {
       if ($o['status'] !== 'draft') fail('locked', 409);
       if (array_key_exists('sheets', $in)) $o['sheets'] = clean_sheets($in['sheets']);
+      if (array_key_exists('boards', $in)) $o['boards'] = clean_boards($in['boards']);
       if (array_key_exists('customer', $in)) $o['customer'] = clean_customer($in['customer']);
       if (lang_of($in['lang'] ?? '') !== '') $o['lang'] = $in['lang'];
       $o['updatedAt'] = gmdate('c');

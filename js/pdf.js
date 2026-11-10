@@ -7,6 +7,8 @@ window.GFC_PDF = (function () {
 
   var DATA = window.GFC_DATA, NS = 'http://www.w3.org/2000/svg';
   var TOKEN = {}; DATA.tokens.forEach(function (t) { TOKEN[t.id] = t; });
+  var SIZE = {}; DATA.sizes.forEach(function (z) { SIZE[z.id] = z; });
+  var art = function (t, back) { return back && t.back ? t.back : t.file; };
   var svgCache = {};
 
   function loadScript(src) {
@@ -51,7 +53,7 @@ window.GFC_PDF = (function () {
 
   function sheetSvg(sheet, slots, back) {
     var urls = [sheet.bg, sheet.marks];
-    slots.forEach(function (id) { if (id && TOKEN[id] && urls.indexOf(TOKEN[id].file) < 0) urls.push(TOKEN[id].file); });
+    slots.forEach(function (id) { if (id && TOKEN[id] && urls.indexOf(art(TOKEN[id], back)) < 0) urls.push(art(TOKEN[id], back)); });
     return Promise.all(urls.map(svgOf)).then(function (els) {
       var byUrl = {}; urls.forEach(function (u, i) { byUrl[u] = els[i]; });
       var root = node('svg', { viewBox: '0 0 ' + sheet.w + ' ' + sheet.h, width: sheet.w, height: sheet.h });
@@ -61,10 +63,18 @@ window.GFC_PDF = (function () {
       place(g, byUrl[sheet.bg], 0, 0, sheet.w, sheet.h, false);
       sheet.slots.forEach(function (slot, i) {
         var t = TOKEN[slots[i]];
-        if (t && t.size === slot.size) place(g, byUrl[t.file], slot.x, slot.y, slot.w, slot.h, back && !t.mirrorBack);
+        var bl = (SIZE[slot.size] && SIZE[slot.size].bleed) || 0;  // ronde fiches: afbeelding met afloop rondom
+        if (t && t.size === slot.size) place(g, byUrl[art(t, back)], slot.x - bl, slot.y - bl, slot.w + 2 * bl, slot.h + 2 * bl, back && !t.mirrorBack);
       });
       sheet.slots.forEach(function (slot) {
-        g.appendChild(node('rect', { x: slot.x, y: slot.y, width: slot.w, height: slot.h, fill: 'none', stroke: '#1d7fc4', 'stroke-width': 0.25 }));
+        var line = { fill: 'none', stroke: '#1d7fc4', 'stroke-width': 0.25 };
+        if (SIZE[slot.size] && SIZE[slot.size].round) {
+          line.cx = slot.x + slot.w / 2; line.cy = slot.y + slot.h / 2; line.r = slot.w / 2;
+          g.appendChild(node('circle', line));
+        } else {
+          line.x = slot.x; line.y = slot.y; line.width = slot.w; line.height = slot.h;
+          g.appendChild(node('rect', line));
+        }
       });
       place(g, byUrl[sheet.marks], 0, 0, sheet.w, sheet.h, false);
       return root;
@@ -139,6 +149,14 @@ window.GFC_PDF = (function () {
           maxY = Math.max(maxY, yy);
           col = (col + 1) % 2;
         });
+        var boards = t.boards ? t.boards(order) : [];
+        if (boards.length) {
+          var by = maxY + 6;
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(25, 137, 202);
+          doc.text(t.T('boards') + '   ' + boards.length, 20, by);
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(11.5); doc.setTextColor(30, 34, 44);
+          doc.text(doc.splitTextToSize(boards.join(', '), first.w - 40), 20, by + 8);
+        }
         doc.setFontSize(9); doc.setTextColor(140, 146, 158);
         doc.text(t.T('pdfFooter', { n: filled.length * 2 }), 20, first.h - 12);
 

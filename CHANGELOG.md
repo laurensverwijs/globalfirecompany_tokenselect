@@ -2,6 +2,14 @@
 
 Het versienummer staat in `VERSION`, in het beheer onderaan de pagina, en in de naam van de zip (`python3 tools/make_zip.py`).
 
+## 1.2.0 (10 november 2026)
+
+- Nieuwe sheet **Ronde fiches**: een punch board met 94 ronde fiches van 25 mm, met 35 keuzes (brandweer, ambulance, burgers, duiker, triage, vuur, rook, pijl en markeringen). Elk fiche heeft 3 mm afloop rondom en een ronde snijlijn.
+- Op de achterkant krijgen de triagefiches (grijs, rood, geel, groen) de Triage-achterkant en alle andere ronde fiches de GFC-achterkant.
+- Nieuw tabblad **Spelborden**: de parkeerplaats zit er altijd bij, de klant kiest maximaal 2 extra borden. De keuze staat in de bestelling, het beheer, de CSV, de PDF en de akkoord-mail. De server weigert meer dan 2 extra borden.
+- Sheets kunnen een eigen naam hebben (ook in de akkoord-mail).
+- Security review gedaan (geen lek gevonden). Extra: in de CSV-export kan een veld niet meer als Excel-formule worden uitgevoerd.
+
 ## 1.1.2 (17 oktober 2026)
 
 - Beveiligingscontrole uitgevoerd (code doorgelicht, aanvallen getest op een lokale kopie en een tweede controle door een aparte agent). Er is geen manier gevonden om in te breken; de app is goed beschermd. Drie kleine extra beschermingen doorgevoerd:

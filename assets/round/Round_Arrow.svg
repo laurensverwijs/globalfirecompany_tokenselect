@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="31mm" height="31mm" viewBox="0 0 87.873874 87.873874">
+<defs>
+<clipPath id="Round_Arrow-clip-0">
+<path clip-rule="nonzero" d="M 0 0 L 87.746094 0 L 87.746094 87.746094 L 0 87.746094 Z M 0 0 "/>
+</clipPath>
+<clipPath id="Round_Arrow-clip-1">
+<path clip-rule="nonzero" d="M 0 0 L 87.746094 0 L 87.746094 87.746094 L 0 87.746094 Z M 0 0 "/>
+</clipPath>
+</defs>
+<g clip-path="url(#Round_Arrow-clip-0)">
+<path fill-rule="nonzero" fill="#e9e8e7" fill-opacity="1" d="M 87.75 43.875 C 87.75 68.105469 68.105469 87.746094 43.875 87.746094 C 19.644531 87.746094 0 68.105469 0 43.875 C 0 19.644531 19.644531 0 43.875 0 C 68.105469 0 87.75 19.644531 87.75 43.875 "/>
+</g>
+<path fill-rule="nonzero" fill="#3068b9" fill-opacity="1" d="M 62.824219 44.695312 L 43.875 21.390625 L 24.925781 44.695312 L 37.164062 44.695312 L 37.164062 66.355469 L 50.582031 66.355469 L 50.582031 44.695312 Z M 62.824219 44.695312 "/>
+<g clip-path="url(#Round_Arrow-clip-1)">
+</g>
+</svg>

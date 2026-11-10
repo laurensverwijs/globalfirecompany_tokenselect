@@ -94,6 +94,8 @@ De koppen gebruiken het huislettertype Ethnocentric als het op de computer van d
 - Maten (bepaald uit de snijlijn in elk symbool, niet uit de bestandsnaam):
   - Klein 40 × 32 mm, Middel 56 × 38 mm, Groot 72 × 38 mm, Extra groot 89 × 44,2 mm
 - Sheet 1: 48 klein · Sheet 2: 30 klein + 6 extra groot · Sheet 3: 8 middel + 15 groot · Sheet 4: 21 groot
+- Sheet **Ronde fiches** (punch board, 341 × 341 mm): 94 ronde fiches van Ø 25 mm met 3 mm afloop rondom, posities uit `Punchboard_template_Front.pdf`. 35 keuzes uit `GFC_Rollen_25mm_05.pdf`. Op de achterkant krijgen de triagefiches de Triage-achterkant en de rest de GFC-achterkant (`back` in `js/data.js`).
+- Tabblad **Spelborden**: de parkeerplaats gaat altijd mee, de klant kiest er maximaal 2 bij (`boards.maxExtra` in `js/data.js`; de server controleert dit ook).
 - Een element past alleen in een vak van dezelfde maat. Is het laatste vak bezet, dan is de sheet vol en kan er niets meer bij.
 - Slepen werkt met muis en touch. Ook: `+` (één toevoegen) en `⇉` (alle lege vakken van die maat vullen).
 - De achterkant wordt automatisch gespiegeld gemaakt, zoals in het Illustrator-bestand.
@@ -113,5 +115,8 @@ pip install zstandard pillow
 GFC_ICC_DIR=<map met default_cmyk.icc> python3 tools/build_webapp.py Sheets_PrintReady.ai .
 ```
 `default_cmyk.icc` komt uit Ghostscript (`iccprofiles/default_cmyk.icc`) en wordt alleen gebruikt om CMYK naar schermkleuren om te zetten.
+
+Ronde fiches: `python3 tools/build_round.py GFC_Rollen_25mm.pdf Punchboard_template_Front.pdf` (pdftocairo en pypdf nodig). Namen en welke fiches de Triage-achterkant krijgen staan bovenin dat script.
+Spelborden: `python3 tools/build_boards.py <map met de bord-PDF's>` maakt de voorbeeldafbeeldingen en de lijst; namen, het vaste bord en het maximum staan bovenin dat script.
 
 Met de hand: zet een SVG in `assets/tokens/` en voeg een regel toe in `js/data.js` onder `tokens` (`id`, `name`, `file`, `size` = S/M/L/XL, `mirrorBack`). Namen mag je daar ook vertalen.
