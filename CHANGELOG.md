@@ -2,6 +2,10 @@
 
 Het versienummer staat in `VERSION`, in het beheer onderaan de pagina, en in de naam van de zip (`python3 tools/make_zip.py`).
 
+## 1.2.1 (10 november 2026)
+
+- Ronde fiches staan groter in de lijst (twee per rij). De knoppen + en ⇉ staan boven het fiche in plaats van eroverheen, en de naam is volledig leesbaar.
+
 ## 1.2.0 (10 november 2026)
 
 - Nieuwe sheet **Ronde fiches**: een punch board met 94 ronde fiches van 25 mm, met 35 keuzes (brandweer, ambulance, burgers, duiker, triage, vuur, rook, pijl en markeringen). Elk fiche heeft 3 mm afloop rondom en een ronde snijlijn.
