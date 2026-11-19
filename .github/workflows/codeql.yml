@@ -1,0 +1,47 @@
+name: Beveiligingsscan (CodeQL)
+
+# Zoekt automatisch naar kwetsbaarheden in de JavaScript van de app en in de GitHub-workflows.
+# Draait bij elk pull request, bij elke wijziging op main en elke maandagochtend (ook als er niets
+# veranderd is, want CodeQL krijgt regelmatig nieuwe controles). Resultaten staan in GitHub onder
+# Security -> Code scanning. Gratis voor openbare repo's.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '17 5 * * 1'   # maandag 06:17 Nederlandse tijd (wintertijd)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  analyze:
+    name: Scan ${{ matrix.language }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, actions]
+    steps:
+      - name: Code ophalen
+        uses: actions/checkout@v4.2.2
+
+      - name: CodeQL starten
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended
+          # meegeleverde, geminimaliseerde bibliotheken niet zelf scannen (die bewaakt de wekelijkse controle)
+          config: |
+            paths-ignore:
+              - js/vendor
+
+      - name: Analyseren
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.language }}
