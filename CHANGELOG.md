@@ -2,6 +2,10 @@
 
 Het versienummer staat in `VERSION`, in het beheer onderaan de pagina, en in de naam van de zip (`python3 tools/make_zip.py`).
 
+## 1.2.3 (19 november 2026)
+
+- PDF-bibliotheken bijgewerkt: jsPDF 2.5.2 → 4.2.1 en svg2pdf.js 2.2.4 → 2.9.0. De oude versies hadden bekende kwetsbaarheden (in onderdelen die de app niet gebruikt). Bestellingen en hun opslag veranderen niet; de beheer-PDF van een bestaande order is pagina voor pagina gelijk aan die met de oude versies.
+
 ## 1.2.2 (10 november 2026)
 
 - Sheet 1 t/m 4 heten nu Voertuigen 1 t/m 4 (Engels: Vehicles, Duits: Fahrzeuge), ook in het beheer, de PDF en de akkoord-mail.
