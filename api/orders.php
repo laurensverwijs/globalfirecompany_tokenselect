@@ -11,6 +11,10 @@
  */
 declare(strict_types=1);
 
+// Nooit PHP-meldingen naar de bezoeker: die verraden het serverpad. Fouten gaan alleen naar het serverlog.
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
@@ -515,7 +519,7 @@ if ($method === 'GET') {
 } else {
   fail('method', 405);
 }
-$action = (string)($in['action'] ?? '');
+$action = is_string($in['action'] ?? null) ? $in['action'] : '';
 housekeeping();
 
 switch ($action) {

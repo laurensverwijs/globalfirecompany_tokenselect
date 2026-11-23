@@ -2,6 +2,11 @@
 
 Het versienummer staat in `VERSION`, in het beheer onderaan de pagina, en in de naam van de zip (`python3 tools/make_zip.py`).
 
+## 1.2.4 (23 november 2026)
+
+- Beveiliging: de API toont nooit meer PHP-meldingen aan bezoekers (die konden bij een host met `display_errors` aan het serverpad verraden, bijv. met `?action[]=x`).
+- Beveiliging: opzoeklijsten van elementen, maten en sheets in de app, het beheer en de PDF hebben geen prototype meer, zodat een order met een id als `constructor` de beheer-PDF niet meer kan laten mislukken.
+
 ## 1.2.3 (19 november 2026)
 
 - PDF-bibliotheken bijgewerkt: jsPDF 2.5.2 → 4.2.1 en svg2pdf.js 2.2.4 → 2.9.0. De oude versies hadden bekende kwetsbaarheden (in onderdelen die de app niet gebruikt). Bestellingen en hun opslag veranderen niet; de beheer-PDF van een bestaande order is pagina voor pagina gelijk aan die met de oude versies.

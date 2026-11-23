@@ -9,9 +9,9 @@
 
   var DATA = window.GFC_DATA;
   var STORE_KEY = 'gfc-sheet-samensteller-v1';
-  var SIZE = {}; DATA.sizes.forEach(function (s) { SIZE[s.id] = s; });
-  var TOKEN = {}; DATA.tokens.forEach(function (t) { TOKEN[t.id] = t; });
-  var SHEET = {}; DATA.sheets.forEach(function (s) { SHEET[s.id] = s; });
+  var SIZE = Object.create(null); DATA.sizes.forEach(function (s) { SIZE[s.id] = s; });
+  var TOKEN = Object.create(null); DATA.tokens.forEach(function (t) { TOKEN[t.id] = t; });
+  var SHEET = Object.create(null); DATA.sheets.forEach(function (s) { SHEET[s.id] = s; });
   var BOARDS = (DATA.boards && DATA.boards.items) || [], BOARD = Object.create(null); BOARDS.forEach(function (b) { BOARD[b.id] = b; });
   var MAX_BOARDS = (DATA.boards && DATA.boards.maxExtra) || 0;
 

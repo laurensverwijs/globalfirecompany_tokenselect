@@ -6,7 +6,7 @@
 
   var DATA = window.GFC_DATA, I18N = window.GFC_I18N, LANGS = Object.keys(I18N);
   var API = 'api/orders.php', SESSION_KEY = 'gfc-admin-session', LANG_KEY = 'gfc-sheet-samensteller-lang';
-  var TOKEN = {}; DATA.tokens.forEach(function (t) { TOKEN[t.id] = t; });
+  var TOKEN = Object.create(null); DATA.tokens.forEach(function (t) { TOKEN[t.id] = t; });
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
 
