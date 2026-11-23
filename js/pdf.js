@@ -6,8 +6,8 @@ window.GFC_PDF = (function () {
   'use strict';
 
   var DATA = window.GFC_DATA, NS = 'http://www.w3.org/2000/svg';
-  var TOKEN = {}; DATA.tokens.forEach(function (t) { TOKEN[t.id] = t; });
-  var SIZE = {}; DATA.sizes.forEach(function (z) { SIZE[z.id] = z; });
+  var TOKEN = Object.create(null); DATA.tokens.forEach(function (t) { TOKEN[t.id] = t; });
+  var SIZE = Object.create(null); DATA.sizes.forEach(function (z) { SIZE[z.id] = z; });
   var art = function (t, back) { return back && t.back ? t.back : t.file; };
   var svgCache = {};
 
